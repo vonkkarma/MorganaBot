@@ -138,17 +138,6 @@ module.exports = {
           const input = collected.first().content.trim();
           const choice = parseInt(input, 10);
 
-          // Validate
-          if (
-            Number.isNaN(choice) ||
-            choice < 1 ||
-            choice > attacker.abilities.length
-          ) {
-            
-            // loop again, within the same 30s window
-            continue;
-          }
-
           // Execute valid ability
           const abilityName = attacker.abilities[choice - 1];
           await battleUtils.executeAbility(
