@@ -2,23 +2,57 @@
     "Bash": {
       "name": "Bash",
       "type": "Physical",
-      "power": 5,
+      "power": 100,
       "emoji": "💥",
-      "sp": 0
+      "sp": 0,
+      "usesStrength": true,
+      "usesMagic": false
     },
     "Dia": {
       "name": "Dia",
       "type": "Healing",
-      "power": 5,
+      "power": 35,
       "emoji": "✨",
-      "sp": 3
+      "sp": 8,
+      "healingPercent": 0.15,
+      "usesStrength": false,
+      "usesMagic": true
     },
     "Bufu": {
       "name": "Bufu",
       "type": "Ice",
-      "power": 7,
+      "power": 130,
       "emoji": "❄️",
-      "sp": 5
+      "sp": 10,
+      "usesStrength": false,
+      "usesMagic": true
+    },
+    "Agi":{
+      "name": "Agi",
+      "type": "Fire",
+      "power": 130,
+      "emoji": "🔥",
+      "sp": 10,
+      "usesStrength": false,
+      "usesMagic": true
+    },
+    "Zio":{
+      "name": "Zio",
+      "type": "Elec",
+      "power": 130,
+      "emoji": "⚡",
+      "sp": 10,
+      "usesStrength": false,
+      "usesMagic": true
+    },
+    "Garu":{
+      "name": "Garu",
+      "type": "Wind",
+      "power": 130,
+      "emoji": "🍃",
+      "sp": 10,
+      "usesStrength": false,
+      "usesMagic": true
     }
   }
   

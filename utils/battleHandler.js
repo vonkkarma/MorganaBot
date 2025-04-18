@@ -1,5 +1,6 @@
 const fs = require('fs');
 const moves = require('../moves.json');
+const { calculateDamage } = require('./damageCalculator');
 
 module.exports = {
   async promptForDemonSelection(message, userId, caughtDemons, demons) {
@@ -38,24 +39,52 @@ module.exports = {
 
     if (move.type === 'Healing') {
       const maxHp = demons[attacker.name]?.hp || attacker.maxHp;
-      attacker.hp = Math.min(attacker.hp + move.power, maxHp);
-      await message.channel.send(`${attackerText} uses ${move.emoji} ${ability.name} and heals ${move.power} HP!`);
-    } else {
-      let dmg = move.power + attacker.attack - defender.defense;
+      const baseHeal = move.power;
+      const percentHeal = Math.floor(maxHp * (move.healingPercent || 0));
+      const totalHeal = baseHeal + percentHeal;
+    
+      attacker.hp = Math.min(attacker.hp + totalHeal, maxHp);
+    
+      await message.channel.send(
+        `${attackerText} uses ${move.emoji} ${ability.name} and heals ${totalHeal} HP!`
+      );
+    }
+     else {
       const resist = defender.resistances;
+    
+      let context = {
+        attackStageMultiplier: 1,
+        defenseStageMultiplier: 1,
+        // add other multipliers here if needed
+        isGuarding: false
+      };
+    
+      
 
-      if (resist?.weak?.includes(move.type)) {
-        dmg *= 2;
+    
+      let efficacy = 1;
+      let baseDamage = calculateDamage(attacker, defender, move, context);
+      baseDamage = Math.floor(baseDamage * efficacy);
+      
+      const isWeak = resist?.weak?.includes(move.type);
+      const isResist = resist?.resist?.includes(move.type);
+      // Later implement repels, nulls, and drains too
+
+      if (isWeak) {
+        efficacy = 1.25; // baseline SMT V multiplier
         await message.channel.send(`${attackerText} uses ${move.emoji} ${ability.name}... It's super effective!`);
-      } else if (resist?.resist?.includes(move.type)) {
-        dmg = Math.floor(dmg / 2);
+      } else if (isResist) {
+        efficacy = 0.5; // baseline resist multiplier
         await message.channel.send(`${attackerText} uses ${move.emoji} ${ability.name}... It's not very effective...`);
       }
 
-      dmg = Math.max(0, dmg);
-      defender.hp -= dmg;
-      await message.channel.send(`${attackerText} uses ${move.emoji} ${ability.name} and deals ${dmg} damage!`);
+    
+      baseDamage = Math.max(0, baseDamage);
+      defender.hp -= baseDamage;
+    
+      await message.channel.send(`${attackerText} uses ${move.emoji} ${ability.name} and deals ${baseDamage} damage!`);
     }
+    
   },
 
   async displayBattleStatus(message, player, enemy, isTurnPrompt = false) {

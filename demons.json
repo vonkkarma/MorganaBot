@@ -1,34 +1,107 @@
 {
   "Pixie": {
     "name": "Pixie",
-    "level": 1,
-    "hp": 10,
-    "sp": 20,
-    "attack": 4,
-    "defense": 3,
-    "speed": 5,
-    "abilities": [
-      "Bash", "Dia"
-    ],
+    "level": 2,
+    "hp": 32,
+    "sp": 82,
+    "strength": 2,
+    "magic": 7,
+    "vitality": 4,
+    "speed": 8,
+    "abilities": ["Bash", "Dia", "Garu"],
     "resistances": {
-      "weak": ["Ice"],
-      "resist": ["Physical"]
+      "weak": [""],
+      "resist": ["Wind"]
     }
   },
   "Jack Frost": {
     "name": "Jack Frost",
-    "level": 5,
-    "hp": 20,
-    "sp": 50,
-    "attack": 8,
-    "defense": 6,
-    "speed": 7,
-    "abilities": [
-      "Bash", "Bufu"
-    ],
+    "level": 25,
+    "hp": 119,
+    "sp": 153,
+    "strength": 14,
+    "magic": 29,
+    "vitality": 15,
+    "speed": 21,
+    "abilities": ["Bash", "Bufu"],
     "resistances": {
       "weak": ["Fire"],
       "resist": ["Ice"]
+    }
+  },
+  "Agathion": {
+    "name": "Agathion",
+    "level": 10,
+    "hp": 55,
+    "sp": 93,
+    "strength": 7,
+    "vitality": 9,
+    "magic": 14,
+    "speed": 11,
+    "abilities": ["Zio", "Bash", "Dia"],
+    "resistances": {
+      "weak": ["Ice"],
+      "resist": []
+    }
+  },
+  "Onmoraki": {
+    "name": "Onmoraki",
+    "level": 4,
+    "hp": 42,
+    "sp": 59,
+    "strength": 5,
+    "vitality": 8,
+    "magic": 8,
+    "speed": 7,
+    "abilities": ["Bash", "Agi"],
+    "resistances": {
+      "weak": ["Ice", "Wind"],
+      "resist": ["Fire"]
+    }
+  },
+  "Mandrake": {
+    "name": "Mandrake",
+    "level": 6,
+    "hp": 49,
+    "sp": 75,
+    "strength": 6,
+    "vitality": 7,
+    "magic": 9,
+    "speed": 11,
+    "abilities": ["Bash", "Zio"],
+    "resistances": {
+      "weak": ["Fire"],
+      "resist": ["Elec"]
+    }
+  },
+  "Cait Sith": {
+    "name": "Cait Sith",
+    "level": 7,
+    "hp": 54,
+    "sp": 70,
+    "strength": 10,
+    "vitality": 7,
+    "magic": 10,
+    "speed": 7,
+    "abilities": ["Bash", "Dia", "Zio"],
+    "resistances": {
+      "weak": ["Wind"],
+      "resist": ["Elec"]
+    }
+  },
+  "Aeros": {
+    "name": "Aeros",
+    "level": 12,
+    "hp": 62,
+    "sp": 99,
+    "strength": 9,
+    "vitality": 9,
+    "magic": 17,
+    "speed": 11,
+    "abilities": ["Bash", "Garu"],
+    "resistances": {
+      "weak": ["Elec"],
+      "resist": ["Wind"]
     }
   }
 }
