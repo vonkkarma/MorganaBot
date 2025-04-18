@@ -103,40 +103,87 @@ module.exports = {
       const attacker = turn === 'player' ? battleData.player : battleData.enemy;
       const defender = turn === 'player' ? battleData.enemy : battleData.player;
 
-      await battleUtils.displayBattleStatus(message, battleData.player, battleData.enemy, turn === 'player');
+      await battleUtils.displayBattleStatus(
+        message,
+        battleData.player,
+        battleData.enemy,
+        turn === 'player'
+      );
 
-      try {
-        const collected = await message.channel.awaitMessages({
-          filter: m => m.author.id === attacker.userId,
-          max: 1,
-          time: 30000,
-          errors: ['time']
-        });
+      // Start the 30s timer
+      const startTime = Date.now();
+      const TIMEOUT = 30_000;
+      let madeMove = false;
 
-        const choice = parseInt(collected.first().content);
-        const abilityName = attacker.abilities[choice - 1];
-        if (!abilityName) throw new Error();
+      while (!madeMove) {
+        const elapsed = Date.now() - startTime;
+        const remaining = TIMEOUT - elapsed;
 
-        await battleUtils.executeAbility(
-          attacker,
-          defender,
-          { name: abilityName },
-          message,
-          demons,
-          `<@${attacker.userId}> (${attacker.name})`,
-          `<@${defender.userId}> (${defender.name})`
-        );
-      } catch {
-        await message.channel.send(`<@${attacker.userId}> didn't respond. Turn skipped.`);
+        // If time's up, skip turn
+        if (remaining <= 0) {
+          await message.channel.send(
+            `<@${attacker.userId}> didn't respond in time. Turn skipped.`
+          );
+          break;
+        }
+
+        try {
+          // Wait only the remaining time
+          const collected = await message.channel.awaitMessages({
+            filter: m => m.author.id === attacker.userId,
+            max: 1,
+            time: remaining,
+            errors: ['time']
+          });
+          const input = collected.first().content.trim();
+          const choice = parseInt(input, 10);
+
+          // Validate
+          if (
+            Number.isNaN(choice) ||
+            choice < 1 ||
+            choice > attacker.abilities.length
+          ) {
+            
+            // loop again, within the same 30s window
+            continue;
+          }
+
+          // Execute valid ability
+          const abilityName = attacker.abilities[choice - 1];
+          await battleUtils.executeAbility(
+            attacker,
+            defender,
+            { name: abilityName },
+            message,
+            demons,
+            `<@${attacker.userId}> (${attacker.name})`,
+            `<@${defender.userId}> (${defender.name})`
+          );
+          madeMove = true;
+        } catch (err) {
+          // timeout from awaitMessages
+          await message.channel.send(
+            `<@${attacker.userId}> didn't respond in time. Turn skipped.`
+          );
+          break;
+        }
       }
 
+      // Swap turn
       turn = turn === 'player' ? 'enemy' : 'player';
     }
 
+    // Battle outcome
     if (battleData.player.hp <= 0) {
-      await message.channel.send(`<@${battleData.player.userId}> was defeated by <@${battleData.enemy.userId}>!`);
+      await message.channel.send(
+        `<@${battleData.player.userId}> was defeated by <@${battleData.enemy.userId}>!`
+      );
     } else {
-      await message.channel.send(`<@${battleData.player.userId}> defeated <@${battleData.enemy.userId}>!`);
+      await message.channel.send(
+        `<@${battleData.player.userId}> defeated <@${battleData.enemy.userId}>!`
+      );
     }
   }
+
 };
