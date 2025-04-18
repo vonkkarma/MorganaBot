@@ -34,7 +34,7 @@ module.exports = {
     }
 
     
-    const requiredChance = 100 * Math.pow(2, -0.045 * randomDemon.level);
+    const requiredChance = 100 * Math.pow(2, -0.09 * randomDemon.level);
     
     // Generate the random number and check if the catch is successful
     const catchChance = Math.random() * 100;
