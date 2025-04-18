@@ -1,0 +1,24 @@
+{
+    "Bash": {
+      "name": "Bash",
+      "type": "Physical",
+      "power": 5,
+      "emoji": "💥",
+      "sp": 0
+    },
+    "Dia": {
+      "name": "Dia",
+      "type": "Healing",
+      "power": 5,
+      "emoji": "✨",
+      "sp": 3
+    },
+    "Bufu": {
+      "name": "Bufu",
+      "type": "Ice",
+      "power": 7,
+      "emoji": "❄️",
+      "sp": 5
+    }
+  }
+  

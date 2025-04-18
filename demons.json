@@ -1,0 +1,34 @@
+{
+  "Pixie": {
+    "name": "Pixie",
+    "level": 1,
+    "hp": 10,
+    "sp": 20,
+    "attack": 4,
+    "defense": 3,
+    "speed": 5,
+    "abilities": [
+      "Bash", "Dia"
+    ],
+    "resistances": {
+      "weak": ["Ice"],
+      "resist": ["Physical"]
+    }
+  },
+  "Jack Frost": {
+    "name": "Jack Frost",
+    "level": 5,
+    "hp": 20,
+    "sp": 50,
+    "attack": 8,
+    "defense": 6,
+    "speed": 7,
+    "abilities": [
+      "Bash", "Bufu"
+    ],
+    "resistances": {
+      "weak": ["Fire"],
+      "resist": ["Ice"]
+    }
+  }
+}
