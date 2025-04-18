@@ -76,6 +76,7 @@ module.exports = {
           userId,
           name: playerDemon.name,
           maxHp: playerDemon.hp,
+          maxSp: playerDemon.sp,
           hp: playerDemon.hp,
           sp: playerDemon.sp,
         },
@@ -84,6 +85,7 @@ module.exports = {
           userId: opponentId,
           name: opponentDemon.name,
           maxHp: opponentDemon.hp,
+          maxSp: opponentDemon.sp,
           hp: opponentDemon.hp,
           sp: opponentDemon.sp,
         }
@@ -138,7 +140,12 @@ module.exports = {
           const input = collected.first().content.trim();
           const choice = parseInt(input, 10);
 
-          // Execute valid ability
+          if (
+            isNaN(choice) ||
+            choice < 1 ||
+            choice > attacker.abilities.length
+          ) continue; 
+
           const abilityName = attacker.abilities[choice - 1];
           await battleUtils.executeAbility(
             attacker,
@@ -150,6 +157,7 @@ module.exports = {
             `<@${defender.userId}> (${defender.name})`
           );
           madeMove = true;
+
         } catch (err) {
           // timeout from awaitMessages
           await message.channel.send(

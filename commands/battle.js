@@ -22,8 +22,8 @@ module.exports = {
     await message.channel.send(`A wild ${enemyDemon.name} appears!`);
 
     const battleData = {
-      player: { ...playerDemon, name: playerDemon.name, maxHp: playerDemon.hp, hp: playerDemon.hp, sp: playerDemon.sp },
-      enemy: { ...enemyDemon, name: enemyDemon.name, maxHp: enemyDemon.hp, hp: enemyDemon.hp, sp: enemyDemon.sp }
+      player: { ...playerDemon, name: playerDemon.name, maxHp: playerDemon.hp, hp: playerDemon.hp, sp: playerDemon.sp, maxSp: playerDemon.sp, },
+      enemy: { ...enemyDemon, name: enemyDemon.name, maxHp: enemyDemon.hp, hp: enemyDemon.hp, sp: enemyDemon.sp, maxSp: enemyDemon.sp }
     };
 
     await this.battleLoop(message, battleData, demons);

@@ -1,3 +1,5 @@
+const moves = require('../moves.json'); // adjust the path as needed
+
 module.exports = {
   name: 'demon',
   description: 'Get details about a demon',
@@ -6,18 +8,20 @@ module.exports = {
       return message.reply('Please specify a demon name.');
     }
 
-    // Join args into a full string and sanitize it to lowercase
     const demonName = args.join(' ').toLowerCase();
+    const demonKey = Object.keys(demons).find(key => key.toLowerCase() === demonName);
 
-    // Find the demon by matching the lowercase version of the name
-    const demon = Object.keys(demons).find(key => key.toLowerCase() === demonName);
-
-    if (!demon) {
+    if (!demonKey) {
       return message.reply(`I couldn't find a demon named "${demonName}".`);
     }
 
-    // Retrieve the demon details
-    const demonInfo = demons[demon];
+    const demonInfo = demons[demonKey];
+
+    const abilitiesText = demonInfo.abilities.map(name => {
+      const move = moves[name];
+      if (!move) return `• ${name} — (Unknown Move)`;
+      return `• ${move.emoji} **${move.name}** — ${move.type}, Power: ${move.power}`;
+    }).join('\n');
 
     const demonDetails = `
 **${demonInfo.name}**
@@ -29,7 +33,7 @@ module.exports = {
 - Speed: ${demonInfo.speed}
 
 **Abilities**
-${demonInfo.abilities.map(a => `• ${a.name} — ${a.type}, Power: ${a.power}`).join('\n')}
+${abilitiesText}
 
 **Resistances**
 • Weak: ${demonInfo.resistances?.weak.join(', ') || 'None'}

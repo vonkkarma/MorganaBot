@@ -5,7 +5,12 @@ const { calculateDamage } = require('./damageCalculator');
 module.exports = {
   async promptForDemonSelection(message, userId, caughtDemons, demons) {
     await message.channel.send(
-      `<@${userId}>, choose your demon:\n${caughtDemons.map((d, i) => `${i + 1}. ${d}`).join('\n')}`
+      `<@${userId}>, choose your demon:\n` +
+      caughtDemons.map((d, i) => {
+        const demon = demons[d];
+        const level = demon?.level ?? '?';
+        return `${i + 1}. ${d} (Lv ${level})`;
+      }).join('\n')
     );
 
     const filter = m => m.author.id === userId;
@@ -87,18 +92,27 @@ module.exports = {
     
   },
 
-  async displayBattleStatus(message, player, enemy, isTurnPrompt = false) {
-    let battleStatus = `**You**\n${player.name}: ${player.hp} HP | ${player.sp} SP\n\n**Enemy**\n${enemy.name}: ${enemy.hp} HP | ${enemy.sp} SP`;
-
-    if (isTurnPrompt) {
-      battleStatus += `\n\nYour turn! Choose an ability:\n${player.abilities.map((name, i) => {
+  async displayBattleStatus(message, player, enemy, isPlayerTurn = true) {
+    const attacker = isPlayerTurn ? player : enemy;
+  
+    const playerMention = player.userId ? ` (<@${player.userId}>)` : '';
+    const enemyMention = enemy.userId ? ` (<@${enemy.userId}>)` : '';
+    const attackerMention = attacker.userId ? `<@${attacker.userId}>` : attacker.name;
+  
+    let battleStatus = `**${player.name}** Lv${player.level}${playerMention}\nHP: ${player.hp} / ${player.maxHp} | SP: ${player.sp} / ${player.maxSp}\n\n` +
+                       `**${enemy.name}** Lv${enemy.level}${enemyMention}\nHP: ${enemy.hp} / ${enemy.maxHp} | SP: ${enemy.sp} / ${enemy.maxSp}`;
+  
+    if (isPlayerTurn !== null) {
+      battleStatus += `\n\n${attackerMention}, it's your turn! Choose an ability:\n${attacker.abilities.map((name, i) => {
         const move = moves[name];
         return move
-          ? `${i + 1}. ${name} ${move.emoji} (${move.sp} SP)`
+          ? `${i + 1}. ${move.emoji} ${name} — ${move.type} (${move.sp} SP)`
           : `${i + 1}. ${name} (Unknown Move)`;
-      }).join('\n')}`;      
+      }).join('\n')}`;
     }
-
+  
     await message.channel.send(battleStatus);
   }
+  
+  
 };
