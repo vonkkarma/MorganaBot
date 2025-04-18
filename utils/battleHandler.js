@@ -72,10 +72,10 @@ module.exports = {
 
       if (isWeak) {
         efficacy = 1.25; // baseline SMT V multiplier
-        await message.channel.send(`${attackerText} uses ${move.emoji} ${ability.name}... It's super effective!`);
+        await message.channel.send(`${attackerText} uses ${move.emoji} ${ability.name}... WEAK!`);
       } else if (isResist) {
         efficacy = 0.5; // baseline resist multiplier
-        await message.channel.send(`${attackerText} uses ${move.emoji} ${ability.name}... It's not very effective...`);
+        await message.channel.send(`${attackerText} uses ${move.emoji} ${ability.name}... RESIST!`);
       }
 
     

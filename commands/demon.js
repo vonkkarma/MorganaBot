@@ -23,8 +23,9 @@ module.exports = {
 **${demonInfo.name}**
 - Level: ${demonInfo.level}
 - HP: ${demonInfo.hp}
-- Attack: ${demonInfo.attack}
-- Defense: ${demonInfo.defense}
+- Strength: ${demonInfo.strength}
+- Magic: ${demonInfo.magic}
+- Vitality: ${demonInfo.vitality}
 - Speed: ${demonInfo.speed}
 
 **Abilities**
