@@ -20,7 +20,8 @@ module.exports = {
     const abilitiesText = demonInfo.abilities.map(name => {
       const move = moves[name];
       if (!move) return `• ${name} — (Unknown Move)`;
-      return `• ${move.emoji} **${move.name}** — ${move.type}, Power: ${move.power}`;
+      return `• ${move.emoji} **${move.name}** — ${move.type}, Power: ${move.power}, SP: ${move.sp}
+      _${move.desc}_\n`;
     }).join('\n');
 
     const demonDetails = `

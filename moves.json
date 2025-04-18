@@ -6,7 +6,9 @@
       "emoji": "💥",
       "sp": 0,
       "usesStrength": true,
-      "usesMagic": false
+      "usesMagic": false,
+      "accuracy": 100,
+      "desc": "Weak Physical attack to 1 foe."
     },
     "Dia": {
       "name": "Dia",
@@ -16,7 +18,9 @@
       "sp": 8,
       "healingPercent": 0.15,
       "usesStrength": false,
-      "usesMagic": true
+      "usesMagic": true,
+      "accuracy": 100,
+      "desc": "Restores a small amount of HP."
     },
     "Bufu": {
       "name": "Bufu",
@@ -25,7 +29,9 @@
       "emoji": "❄️",
       "sp": 10,
       "usesStrength": false,
-      "usesMagic": true
+      "usesMagic": true,
+      "accuracy": 98,
+      "desc": "Weak Ice attack to 1 foe."
     },
     "Agi":{
       "name": "Agi",
@@ -34,7 +40,9 @@
       "emoji": "🔥",
       "sp": 10,
       "usesStrength": false,
-      "usesMagic": true
+      "usesMagic": true,
+      "accuracy": 98,
+      "desc": "Weak Fire attack to 1 foe."
     },
     "Zio":{
       "name": "Zio",
@@ -43,7 +51,9 @@
       "emoji": "⚡",
       "sp": 10,
       "usesStrength": false,
-      "usesMagic": true
+      "usesMagic": true,
+      "accuracy": 98,
+      "desc": "Weak Elec attack to 1 foe."
     },
     "Garu":{
       "name": "Garu",
@@ -52,7 +62,20 @@
       "emoji": "🍃",
       "sp": 10,
       "usesStrength": false,
-      "usesMagic": true
+      "usesMagic": true,
+      "accuracy": 98,
+      "desc": "Weak Wind attack to 1 foe."
+    },
+    "Garula":{
+      "name": "Garula",
+      "type": "Wind",
+      "power": 160,
+      "emoji": "🍃",
+      "sp": 20,
+      "usesStrength": false,
+      "usesMagic": true,
+      "accuracy": 98,
+      "desc": "Medium Wind attack to 1 foe."
     }
   }
   

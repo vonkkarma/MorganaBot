@@ -10,8 +10,11 @@
     "speed": 8,
     "abilities": ["Bash", "Dia", "Garu"],
     "resistances": {
-      "weak": [""],
-      "resist": ["Wind"]
+      "weak": ["Dark"],
+      "resist": ["Wind"],
+      "null": [],
+      "drain": [],
+      "repel": []
     }
   },
   "Jack Frost": {
@@ -26,7 +29,10 @@
     "abilities": ["Bash", "Bufu"],
     "resistances": {
       "weak": ["Fire"],
-      "resist": ["Ice"]
+      "resist": [],
+      "null": [],
+      "drain": ["Ice"],
+      "repel": []
     }
   },
   "Agathion": {
@@ -41,7 +47,10 @@
     "abilities": ["Zio", "Bash", "Dia"],
     "resistances": {
       "weak": ["Ice"],
-      "resist": []
+      "resist": [],
+      "null": ["Elec"],
+      "drain": [],
+      "repel": []
     }
   },
   "Onmoraki": {
@@ -56,7 +65,10 @@
     "abilities": ["Bash", "Agi"],
     "resistances": {
       "weak": ["Ice", "Wind"],
-      "resist": ["Fire"]
+      "resist": ["Fire"],
+      "null": [],
+      "drain": [],
+      "repel": []
     }
   },
   "Mandrake": {
@@ -71,7 +83,10 @@
     "abilities": ["Bash", "Zio"],
     "resistances": {
       "weak": ["Fire"],
-      "resist": ["Elec"]
+      "resist": ["Elec"],
+      "null": [],
+      "drain": [],
+      "repel": []
     }
   },
   "Cait Sith": {
@@ -86,7 +101,10 @@
     "abilities": ["Bash", "Dia", "Zio"],
     "resistances": {
       "weak": ["Wind"],
-      "resist": ["Elec"]
+      "resist": ["Elec"],
+      "null": [],
+      "drain": [],
+      "repel": []
     }
   },
   "Aeros": {
@@ -101,7 +119,64 @@
     "abilities": ["Bash", "Garu"],
     "resistances": {
       "weak": ["Elec"],
-      "resist": ["Wind"]
+      "resist": ["Wind"],
+      "null": [],
+      "drain": [],
+      "repel": []
+    }
+  },
+  "Koppa Tengu": {
+    "name": "Koppa Tengu",
+    "level": 24,
+    "hp": 116,
+    "sp": 129,
+    "strength": 13,
+    "vitality": 16,
+    "magic": 18,
+    "speed": 27,
+    "abilities": ["Bash", "Garula", "Garu"],
+    "resistances": {
+      "weak": ["Elec"],
+      "resist": ["Wind"],
+      "null": [],
+      "drain": [],
+      "repel": []
+    }
+  },
+  "Andras": {
+    "name": "Andras",
+    "level": 18,
+    "hp": 92,
+    "sp": 108,
+    "strength": 13,
+    "vitality": 13,
+    "magic": 12,
+    "speed": 20,
+    "abilities": ["Bash", "Garula"],
+    "resistances": {
+      "weak": ["Elec", "Light"],
+      "resist": [],
+      "null": ["Ice"],
+      "drain": [],
+      "repel": []
+    }
+  },
+  "High Pixie": {
+    "name": "High Pixie",
+    "level": 18,
+    "hp": 93,
+    "sp": 129,
+    "strength": 9,
+    "vitality": 12,
+    "magic": 13,
+    "speed": 20,
+    "abilities": ["Bash", "Garula","Zio", "Dia"],
+    "resistances": {
+      "weak": ["Ice"],
+      "resist": ["Wind"],
+      "null": [],
+      "drain": [],
+      "repel": []
     }
   }
 }

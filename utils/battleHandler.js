@@ -34,6 +34,14 @@ module.exports = {
     const move = moves[ability.name]; // Get the full move from moves.json
     if (!move) return;
 
+
+    const accuracy = move.accuracy ?? 100;
+    const roll = Math.random() * 100;
+    if (roll > accuracy) {
+      await message.channel.send(`${attackerText} uses ${move.emoji} ${ability.name}... but it MISSES!`);
+      return;
+    }
+
     if (attacker.sp < move.sp) {
       await message.channel.send(`${attackerText} doesn't have enough SP to use ${ability.name}!`);
       return;
@@ -73,21 +81,47 @@ module.exports = {
       
       const isWeak = resist?.weak?.includes(move.type);
       const isResist = resist?.resist?.includes(move.type);
+      const isNull = resist?.null?.includes(move.type);
+      const isDrain = resist?.drain?.includes(move.type);
+      const isRepel = resist?.repel?.includes(move.type);
       // Later implement repels, nulls, and drains too
-
-      if (isWeak) {
-        efficacy = 1.25; // baseline SMT V multiplier
-        await message.channel.send(`${attackerText} uses ${move.emoji} ${ability.name}... WEAK!`);
-      } else if (isResist) {
-        efficacy = 0.5; // baseline resist multiplier
-        await message.channel.send(`${attackerText} uses ${move.emoji} ${ability.name}... RESIST!`);
+      
+      switch(true){
+        case (isWeak): {
+          efficacy = 1.25; // baseline SMT V multiplier
+          await message.channel.send(`${attackerText} uses ${move.emoji} ${ability.name}... WEAK‼️!`);
+        } case (isResist): {
+          efficacy = 0.5; // baseline resist multiplier
+          await message.channel.send(`${attackerText} uses ${move.emoji} ${ability.name}... RESIST🛡!`);
+        } case (isNull): {
+          await message.channel.send(`${attackerText} uses ${move.emoji} ${ability.name}... but it has no effect! ❌`);
+          return;
+        } case (isDrain): {
+          const healedAmount = Math.max(0, Math.floor(baseDamage));
+          defender.hp = Math.min(defender.maxHp, defender.hp + healedAmount);
+          await message.channel.send(`${attackerText} uses ${move.emoji} ${ability.name}... but it's drained! ${defenderText} heals ${healedAmount} HP! 💉`);
+          return;
+        } case (isRepel): {
+          attacker.hp -= baseDamage;
+          await message.channel.send(`${attackerText} uses ${move.emoji} ${ability.name}... it's reflected! ${attackerText} takes ${baseDamage} damage! 🔁`);
+          return;
+        }
       }
 
-    
-      baseDamage = Math.max(0, baseDamage);
+
+      
+
+      const critChance = move.crit ?? 0.1;
+      const isCrit = Math.random() < critChance;
+
+      if (isCrit) {
+        baseDamage = Math.floor(baseDamage * 1.5);
+        await message.channel.send(`Critical hit! 💥`);
+      }
       defender.hp -= baseDamage;
-    
+      
       await message.channel.send(`${attackerText} uses ${move.emoji} ${ability.name} and deals ${baseDamage} damage!`);
+      
     }
     
   },
@@ -106,7 +140,7 @@ module.exports = {
       battleStatus += `\n\n${attackerMention}, it's your turn! Choose an ability:\n${attacker.abilities.map((name, i) => {
         const move = moves[name];
         return move
-          ? `${i + 1}. ${move.emoji} ${name} — ${move.type} (${move.sp} SP)`
+          ? `${i + 1}. ${move.emoji} ${name} — ${move.type} (${move.sp} SP) \n _${move.desc}_\n`
           : `${i + 1}. ${name} (Unknown Move)`;
       }).join('\n')}`;
     }
