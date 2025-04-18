@@ -18,7 +18,11 @@ function getLevelCorrectionMultiplier(attacker, defender) {
     return 1.0;
   }
   
+  function guardAction(demon) {
+    demon.isGuarding = true;
+  }
 
+  
 function calculateDamage(attacker, defender, skill, context = {}) {
     const level = attacker.level;
     const root = (level <= 150) ? level + 10 : (level / 10 + 145);
@@ -76,5 +80,24 @@ function calculateDamage(attacker, defender, skill, context = {}) {
     return Math.max(Math.floor(modified), 1);
   }
   
-  module.exports = { calculateDamage };
+  function basicAttack(attacker, defender) {
+    // Use standard 100 power physical attack logic
+    const attackData = {
+      name: "Attack",
+      type: "Physical",
+      power: 100,
+      usesStrength: true,
+      usesMagic: false,
+      sp: 0,
+    };
+  
+    return calculateDamage(attacker, defender, attackData);
+  }
+  
+  
+  
+
+  module.exports = { calculateDamage, basicAttack, guardAction };
+
+  
   
