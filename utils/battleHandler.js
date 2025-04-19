@@ -282,7 +282,7 @@ module.exports = {
       }
     }
     
-    return false; // Ação não completa por padrão
+    return false; 
   },
   
   // Função para resetar o estado do menu para um usuário
