@@ -100,78 +100,77 @@ module.exports = {
 
   async battleLoop(message, battleData, demons) {
     let turn = 'player';
-
+    const battleHandler = require('../utils/battleHandler');
+  
     while (battleData.player.hp > 0 && battleData.enemy.hp > 0) {
       const attacker = turn === 'player' ? battleData.player : battleData.enemy;
       const defender = turn === 'player' ? battleData.enemy : battleData.player;
-
-      await battleUtils.displayBattleStatus(
+  
+      // Resetar o estado de guarda no início do turno
+      attacker.isGuarding = false;
+  
+      await battleHandler.displayBattleStatus(
         message,
         battleData.player,
         battleData.enemy,
         turn === 'player'
       );
-
-      // Start the 30s timer
+  
+      // Iniciar o timer de 30s
       const startTime = Date.now();
-      const TIMEOUT = 30_000;
-      let madeMove = false;
-
-      while (!madeMove) {
+      const TIMEOUT = 30000;
+      let actionCompleted = false;
+  
+      while (!actionCompleted) {
         const elapsed = Date.now() - startTime;
         const remaining = TIMEOUT - elapsed;
-
-        // If time's up, skip turn
+  
+        // Se o tempo acabou, pular turno
         if (remaining <= 0) {
           await message.channel.send(
             `<@${attacker.userId}> didn't respond in time. Turn skipped.`
           );
           break;
         }
-
+  
         try {
-          // Wait only the remaining time
+          // Esperar apenas o tempo restante
           const collected = await message.channel.awaitMessages({
             filter: m => m.author.id === attacker.userId,
             max: 1,
             time: remaining,
             errors: ['time']
           });
+          
           const input = collected.first().content.trim();
-          const choice = parseInt(input, 10);
-
-          if (
-            isNaN(choice) ||
-            choice < 1 ||
-            choice > attacker.abilities.length
-          ) continue; 
-
-          const abilityName = attacker.abilities[choice - 1];
-          await battleUtils.executeAbility(
-            attacker,
-            defender,
-            { name: abilityName },
+          
+          // Processar a entrada usando a nova função
+          actionCompleted = await battleHandler.processMenuInput(
             message,
+            input,
+            battleData,
             demons,
-            `<@${attacker.userId}> (${attacker.name})`,
-            `<@${defender.userId}> (${defender.name})`
+            turn === 'player' // isPlayerTurn
           );
-          madeMove = true;
-
+          
         } catch (err) {
-          // timeout from awaitMessages
+          // timeout de awaitMessages
           await message.channel.send(
             `<@${attacker.userId}> didn't respond in time. Turn skipped.`
           );
           break;
         }
       }
-
-      // Swap turn
+  
+      // Trocar turno
       turn = turn === 'player' ? 'enemy' : 'player';
     }
-
-    // Battle outcome
+  
+    // Resetar o estado do menu para ambos os jogadores
+    battleHandler.resetMenuState(battleData.player.userId);
+    battleHandler.resetMenuState(battleData.enemy.userId);
+  
+    // Resultado da batalha
     if (battleData.player.hp <= 0) {
       await message.channel.send(
         `<@${battleData.player.userId}> was defeated by <@${battleData.enemy.userId}>!`

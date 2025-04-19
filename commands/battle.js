@@ -31,40 +31,86 @@ module.exports = {
 
   async battleLoop(message, battleData, demons) {
     let turn = 'player';
-
+    const battleHandler = require('../utils/battleHandler');
+  
     while (battleData.player.hp > 0 && battleData.enemy.hp > 0) {
       if (turn === 'player') {
-        await battleUtils.displayBattleStatus(message, battleData.player, battleData.enemy, true);
-
-        try {
-          const collected = await message.channel.awaitMessages({
-            filter: m => m.author.id === message.author.id,
-            max: 1,
-            time: 30000,
-            errors: ['time']
-          });
-
-          const choice = parseInt(collected.first().content);
-          const abilityName = battleData.player.abilities[choice - 1];
-          if (!abilityName) throw new Error();
-          await battleUtils.executeAbility(battleData.player, battleData.enemy, { name: abilityName }, message, demons, battleData.player.name, battleData.enemy.name);
-        } catch {
-          await message.channel.send('No response. Turn skipped.');
+        // Resetar o estado de guarda no início do turno
+        battleData.player.isGuarding = false;
+        
+        await battleHandler.displayBattleStatus(message, battleData.player, battleData.enemy, true);
+  
+        // Rastrear se a ação foi completada
+        let actionCompleted = false;
+        
+        // Iniciar o timer de 30s para o turno
+        const startTime = Date.now();
+        const TIMEOUT = 30000;
+        
+        while (!actionCompleted) {
+          const elapsed = Date.now() - startTime;
+          const remaining = TIMEOUT - elapsed;
+          
+          // Se o tempo acabou, pular o turno
+          if (remaining <= 0) {
+            await message.channel.send('No response. Turn skipped.');
+            break;
+          }
+          
+          try {
+            // Esperar apenas o tempo restante
+            const collected = await message.channel.awaitMessages({
+              filter: m => m.author.id === message.author.id,
+              max: 1,
+              time: remaining,
+              errors: ['time']
+            });
+            
+            const input = collected.first().content.trim();
+            
+            // Processar a entrada usando a nova função
+            actionCompleted = await battleHandler.processMenuInput(
+              message, 
+              input, 
+              battleData, 
+              demons, 
+              true // isPlayerTurn
+            );
+            
+          } catch {
+            await message.channel.send('No response. Turn skipped.');
+            break;
+          }
         }
-
+  
         turn = 'enemy';
       } else {
+        // Resetar o estado de guarda do inimigo no início do turno
+        battleData.enemy.isGuarding = false;
+        
+        // Lógica de IA do inimigo 
         const abilityName = battleData.enemy.abilities[0];
         if (!abilityName) {
           await message.channel.send(`${battleData.enemy.name} does nothing...`);
         } else {
-          await battleUtils.executeAbility(battleData.enemy, battleData.player, { name: abilityName }, message, demons, battleData.enemy.name, battleData.player.name);
+          await battleHandler.executeAbility(
+            battleData.enemy, 
+            battleData.player, 
+            { name: abilityName }, 
+            message, 
+            demons, 
+            battleData.enemy.name, 
+            battleData.player.name
+          );
         }
-
+  
         turn = 'player';
       }
     }
-
+  
+    // Resetar o estado do menu quando a batalha terminar
+    battleHandler.resetMenuState(message.author.id);
+  
     if (battleData.player.hp <= 0) {
       await message.channel.send(`You were defeated by ${battleData.enemy.name}. Better luck next time!`);
     } else {
