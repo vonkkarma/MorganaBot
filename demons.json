@@ -152,7 +152,7 @@
     "vitality": 13,
     "magic": 12,
     "speed": 20,
-    "abilities": ["Garula"],
+    "abilities": ["Garula", "Poisma"],
     "resistances": {
       "weak": ["Elec", "Light"],
       "resist": [],
@@ -170,7 +170,7 @@
     "vitality": 12,
     "magic": 13,
     "speed": 20,
-    "abilities": ["Garula","Zio", "Dia"],
+    "abilities": ["Garula","Zio", "Dia", "Dormina"],
     "resistances": {
       "weak": ["Ice"],
       "resist": ["Wind"],
