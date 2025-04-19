@@ -22,6 +22,7 @@ module.exports = {
       const index = parseInt(collected.first().content) - 1;
       
       if (isNaN(index) || index < 0 || index >= caughtDemons.length) {
+        await message.channel.send("Invalid selection. Please enter a valid number.");
         return null;
       }
       
@@ -289,9 +290,9 @@ module.exports = {
       if (battleMenuState[userId].currentMenu === 'main') {
         // Main menu
         battleStatus += `\nChoose an action:\n`;
-        battleStatus += `1 - 🗡️ Attack\n`;
-        battleStatus += `2 - 📜 Skills\n`;
-        battleStatus += `3 - 🛡️ Guard\n`;
+        battleStatus += `1. 🗡️ Attack\n`;
+        battleStatus += `2. 📜 Skills\n`;
+        battleStatus += `3. 🛡️ Guard\n`;
         battleStatus += `\nType the number of your choice.`;
       } else if (battleMenuState[userId].currentMenu === 'skills') {
         // Skills submenu
@@ -301,7 +302,7 @@ module.exports = {
             ? `${i + 1}. ${move.emoji} ${name} — ${move.type} (${move.sp} SP) \n _${move.desc}_\n`
             : `${i + 1}. ${name} (Unknown Move)`;
         }).join('\n')}`;
-        battleStatus += `\n0 - ⬅️ Back to main menu`;
+        battleStatus += `\n0. ⬅️ Back to main menu`;
       }
     }
   
@@ -341,6 +342,7 @@ module.exports = {
           return await this.executeGuard(attacker, message);
           
         default:
+          await message.channel.send(`Invalid option. Please choose 1, 2, or 3.`);
           return false; // Action not complete, await new input
       }
     } 
@@ -360,6 +362,7 @@ module.exports = {
         menuState.currentMenu = 'main'; // Return to main menu after using ability
         return result; // Action complete if ability was used successfully
       } else {
+        await message.channel.send(`Invalid skill choice. Please try again.`);
         return false; // Action not complete, await new input
       }
     }

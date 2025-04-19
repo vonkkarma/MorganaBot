@@ -39,9 +39,6 @@ ${abilitiesText}
 **Resistances**
 • Weak: ${demonInfo.resistances?.weak.join(', ') || 'None'}
 • Resist: ${demonInfo.resistances?.resist.join(', ') || 'None'}
-• Drain: ${demonInfo.resistances?.drain.join(', ') || 'None'}
-• Null: ${demonInfo.resistances?.null.join(', ') || 'None'}
-• Repel: ${demonInfo.resistances?.repel.join(', ') || 'None'}
 `;
 
     await message.reply(demonDetails);
