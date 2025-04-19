@@ -55,7 +55,7 @@ module.exports = {
       if (response !== 'yes') {
         return message.channel.send(`${opponent.username} declined the PvP challenge.`);
       }
-    } catch {
+    } catch (error) {
       return message.channel.send(`${opponent.username} did not respond in time. Challenge canceled.`);
     }
 
@@ -79,6 +79,7 @@ module.exports = {
           maxSp: playerDemon.sp,
           hp: playerDemon.hp,
           sp: playerDemon.sp,
+          isGuarding: false
         },
         enemy: {
           ...opponentDemon,
@@ -88,6 +89,7 @@ module.exports = {
           maxSp: opponentDemon.sp,
           hp: opponentDemon.hp,
           sp: opponentDemon.sp,
+          isGuarding: false
         }
       };
 
@@ -106,7 +108,7 @@ module.exports = {
       const attacker = turn === 'player' ? battleData.player : battleData.enemy;
       const defender = turn === 'player' ? battleData.enemy : battleData.player;
   
-      // Resetar o estado de guarda no início do turno
+      // Reset guard state at the beginning of the turn
       attacker.isGuarding = false;
   
       await battleHandler.displayBattleStatus(
@@ -116,7 +118,7 @@ module.exports = {
         turn === 'player'
       );
   
-      // Iniciar o timer de 30s
+      // Start the 30s timer
       const startTime = Date.now();
       const TIMEOUT = 30000;
       let actionCompleted = false;
@@ -125,7 +127,7 @@ module.exports = {
         const elapsed = Date.now() - startTime;
         const remaining = TIMEOUT - elapsed;
   
-        // Se o tempo acabou, pular turno
+        // If time ran out, skip turn
         if (remaining <= 0) {
           await message.channel.send(
             `<@${attacker.userId}> didn't respond in time. Turn skipped.`
@@ -134,7 +136,7 @@ module.exports = {
         }
   
         try {
-          // Esperar apenas o tempo restante
+          // Wait only for the remaining time
           const collected = await message.channel.awaitMessages({
             filter: m => m.author.id === attacker.userId,
             max: 1,
@@ -144,7 +146,7 @@ module.exports = {
           
           const input = collected.first().content.trim();
           
-          // Processar a entrada usando a nova função
+          // Process input using the new function
           actionCompleted = await battleHandler.processMenuInput(
             message,
             input,
@@ -153,8 +155,8 @@ module.exports = {
             turn === 'player' // isPlayerTurn
           );
           
-        } catch (err) {
-          // timeout de awaitMessages
+        } catch (error) {
+          // awaitMessages timeout
           await message.channel.send(
             `<@${attacker.userId}> didn't respond in time. Turn skipped.`
           );
@@ -162,15 +164,15 @@ module.exports = {
         }
       }
   
-      // Trocar turno
+      // Switch turns
       turn = turn === 'player' ? 'enemy' : 'player';
     }
   
-    // Resetar o estado do menu para ambos os jogadores
+    // Reset menu state for both players
     battleHandler.resetMenuState(battleData.player.userId);
     battleHandler.resetMenuState(battleData.enemy.userId);
   
-    // Resultado da batalha
+    // Battle result
     if (battleData.player.hp <= 0) {
       await message.channel.send(
         `<@${battleData.player.userId}> was defeated by <@${battleData.enemy.userId}>!`
@@ -181,5 +183,4 @@ module.exports = {
       );
     }
   }
-
 };

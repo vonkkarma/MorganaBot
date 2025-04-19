@@ -22,8 +22,24 @@ module.exports = {
     await message.channel.send(`A wild ${enemyDemon.name} appears!`);
 
     const battleData = {
-      player: { ...playerDemon, name: playerDemon.name, maxHp: playerDemon.hp, hp: playerDemon.hp, sp: playerDemon.sp, maxSp: playerDemon.sp, },
-      enemy: { ...enemyDemon, name: enemyDemon.name, maxHp: enemyDemon.hp, hp: enemyDemon.hp, sp: enemyDemon.sp, maxSp: enemyDemon.sp }
+      player: { 
+        ...playerDemon, 
+        name: playerDemon.name, 
+        maxHp: playerDemon.hp, 
+        hp: playerDemon.hp, 
+        sp: playerDemon.sp, 
+        maxSp: playerDemon.sp,
+        isGuarding: false
+      },
+      enemy: { 
+        ...enemyDemon, 
+        name: enemyDemon.name, 
+        maxHp: enemyDemon.hp, 
+        hp: enemyDemon.hp, 
+        sp: enemyDemon.sp, 
+        maxSp: enemyDemon.sp,
+        isGuarding: false
+      }
     };
 
     await this.battleLoop(message, battleData, demons);
@@ -35,15 +51,15 @@ module.exports = {
   
     while (battleData.player.hp > 0 && battleData.enemy.hp > 0) {
       if (turn === 'player') {
-        // Resetar o estado de guarda no início do turno
+        // Reset guard state at the beginning of the turn
         battleData.player.isGuarding = false;
         
         await battleHandler.displayBattleStatus(message, battleData.player, battleData.enemy, true);
   
-        // Rastrear se a ação foi completada
+        // Track if the action was completed
         let actionCompleted = false;
         
-        // Iniciar o timer de 30s para o turno
+        // Start the 30s timer for the turn
         const startTime = Date.now();
         const TIMEOUT = 30000;
         
@@ -51,14 +67,14 @@ module.exports = {
           const elapsed = Date.now() - startTime;
           const remaining = TIMEOUT - elapsed;
           
-          // Se o tempo acabou, pular o turno
+          // If time ran out, skip the turn
           if (remaining <= 0) {
             await message.channel.send('No response. Turn skipped.');
             break;
           }
           
           try {
-            // Esperar apenas o tempo restante
+            // Wait only for the remaining time
             const collected = await message.channel.awaitMessages({
               filter: m => m.author.id === message.author.id,
               max: 1,
@@ -68,7 +84,7 @@ module.exports = {
             
             const input = collected.first().content.trim();
             
-            // Processar a entrada usando a nova função
+            // Process input using the new function
             actionCompleted = await battleHandler.processMenuInput(
               message, 
               input, 
@@ -77,7 +93,7 @@ module.exports = {
               true // isPlayerTurn
             );
             
-          } catch {
+          } catch (error) {
             await message.channel.send('No response. Turn skipped.');
             break;
           }
@@ -85,30 +101,17 @@ module.exports = {
   
         turn = 'enemy';
       } else {
-        // Resetar o estado de guarda do inimigo no início do turno
+        // Reset the enemy's guard state at the beginning of the turn
         battleData.enemy.isGuarding = false;
         
-        // Lógica de IA do inimigo 
-        const abilityName = battleData.enemy.abilities[0];
-        if (!abilityName) {
-          await message.channel.send(`${battleData.enemy.name} does nothing...`);
-        } else {
-          await battleHandler.executeAbility(
-            battleData.enemy, 
-            battleData.player, 
-            { name: abilityName }, 
-            message, 
-            demons, 
-            battleData.enemy.name, 
-            battleData.player.name
-          );
-        }
+        // Enemy AI logic
+        await battleHandler.executeEnemyTurn(message, battleData, demons);
   
         turn = 'player';
       }
     }
   
-    // Resetar o estado do menu quando a batalha terminar
+    // Reset the menu state when the battle ends
     battleHandler.resetMenuState(message.author.id);
   
     if (battleData.player.hp <= 0) {

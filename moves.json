@@ -1,15 +1,4 @@
 {
-    "Bash": {
-      "name": "Bash",
-      "type": "Physical",
-      "power": 100,
-      "emoji": "💥",
-      "sp": 0,
-      "usesStrength": true,
-      "usesMagic": false,
-      "accuracy": 100,
-      "desc": "Weak Physical attack to 1 foe."
-    },
     "Dia": {
       "name": "Dia",
       "type": "Healing",

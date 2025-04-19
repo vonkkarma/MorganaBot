@@ -23,7 +23,10 @@
     "caughtDemons": []
   },
   "1155313449610518538": {
-    "caughtDemons": []
+    "caughtDemons": [
+      "Koppa Tengu",
+      "Onmoraki"
+    ]
   },
   "1246567683894415361": {
     "caughtDemons": [
@@ -43,7 +46,22 @@
   },
   "1117470027709423768": {
     "caughtDemons": [
-      "Pixie"
+      "Pixie",
+      "Koppa Tengu",
+      "Mandrake",
+      "High Pixie",
+      "Andras",
+      "Onmoraki",
+      "Agathion",
+      "Cait Sith"
+    ]
+  },
+  "1308587708129476690": {
+    "caughtDemons": [
+      "Agathion",
+      "Koppa Tengu",
+      "Andras",
+      "Onmoraki"
     ]
   }
 }

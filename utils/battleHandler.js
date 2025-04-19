@@ -1,6 +1,9 @@
 const fs = require('fs');
 const moves = require('../moves.json');
-const { calculateDamage } = require('./damageCalculator');
+const { calculateDamage, guardAction } = require('./damageCalculator');
+
+// Track battle menu state for all active users
+const battleMenuState = {};
 
 module.exports = {
   async promptForDemonSelection(message, userId, caughtDemons, demons) {
@@ -17,12 +20,18 @@ module.exports = {
     try {
       const collected = await message.channel.awaitMessages({ filter, max: 1, time: 30000, errors: ['time'] });
       const index = parseInt(collected.first().content) - 1;
+      
+      if (isNaN(index) || index < 0 || index >= caughtDemons.length) {
+        await message.channel.send("Invalid selection. Please enter a valid number.");
+        return null;
+      }
+      
       const selectedName = caughtDemons[index];
       const demon = demons[selectedName];
       if (demon) {
         return demon;
       }
-    } catch {
+    } catch (error) {
       return null;
     }
 
@@ -30,20 +39,20 @@ module.exports = {
   },
 
   async executeAbility(attacker, defender, ability, message, demons, attackerText, defenderText) {
-    if (!ability) return;
+    if (!ability) return false;
     const move = moves[ability.name]; // Get the full move from moves.json
-    if (!move) return;
+    if (!move) return false;
 
     const accuracy = move.accuracy ?? 100;
     const roll = Math.random() * 100;
     if (roll > accuracy) {
       await message.channel.send(`${attackerText} uses ${move.emoji} ${ability.name}... but it MISSES!`);
-      return;
+      return true;
     }
 
     if (attacker.sp < move.sp) {
       await message.channel.send(`${attackerText} doesn't have enough SP to use ${ability.name}!`);
-      return;
+      return false;
     }
 
     // Deduct SP
@@ -60,6 +69,7 @@ module.exports = {
       await message.channel.send(
         `${attackerText} uses ${move.emoji} ${ability.name} and heals ${totalHeal} HP!`
       );
+      return true;
     }
     else {
       const resist = defender.resistances;
@@ -67,39 +77,47 @@ module.exports = {
       let context = {
         attackStageMultiplier: 1,
         defenseStageMultiplier: 1,
-        isGuarding: false
+        isGuarding: defender.isGuarding || false
       };
     
       let efficacy = 1;
       let baseDamage = calculateDamage(attacker, defender, move, context);
-      baseDamage = Math.floor(baseDamage * efficacy);
       
+      // Check resistances and apply appropriate multipliers
       const isWeak = resist?.weak?.includes(move.type);
       const isResist = resist?.resist?.includes(move.type);
       const isNull = resist?.null?.includes(move.type);
       const isDrain = resist?.drain?.includes(move.type);
       const isRepel = resist?.repel?.includes(move.type);
       
-      switch(true){
-        case (isWeak): {
-          efficacy = 1.25; // baseline SMT V multiplier
-          await message.channel.send(`${attackerText} uses ${move.emoji} ${ability.name}... WEAK‼️!`);
-        } case (isResist): {
-          efficacy = 0.5; // baseline resist multiplier
-          await message.channel.send(`${attackerText} uses ${move.emoji} ${ability.name}... RESIST🛡!`);
-        } case (isNull): {
-          await message.channel.send(`${attackerText} uses ${move.emoji} ${ability.name}... but it has no effect! ❌`);
-          return;
-        } case (isDrain): {
-          const healedAmount = Math.max(0, Math.floor(baseDamage));
-          defender.hp = Math.min(defender.maxHp, defender.hp + healedAmount);
-          await message.channel.send(`${attackerText} uses ${move.emoji} ${ability.name}... but it's drained! ${defenderText} heals ${healedAmount} HP! 💉`);
-          return;
-        } case (isRepel): {
-          attacker.hp -= baseDamage;
-          await message.channel.send(`${attackerText} uses ${move.emoji} ${ability.name}... it's reflected! ${attackerText} takes ${baseDamage} damage! 🔁`);
-          return;
-        }
+      if (isWeak) {
+        efficacy = 1.25; // baseline SMT V multiplier
+        baseDamage = Math.floor(baseDamage * efficacy);
+        await message.channel.send(`${attackerText} uses ${move.emoji} ${ability.name}... WEAK! ‼️`);
+      } 
+      else if (isResist) {
+        efficacy = 0.5; // baseline resist multiplier
+        baseDamage = Math.floor(baseDamage * efficacy);
+        await message.channel.send(`${attackerText} uses ${move.emoji} ${ability.name}... RESIST! 🛡`);
+      }
+      else if (isNull) {
+        await message.channel.send(`${attackerText} uses ${move.emoji} ${ability.name}... but it has no effect! ❌`);
+        return true;
+      }
+      else if (isDrain) {
+        const healedAmount = Math.max(0, Math.floor(baseDamage));
+        defender.hp = Math.min(defender.maxHp, defender.hp + healedAmount);
+        await message.channel.send(`${attackerText} uses ${move.emoji} ${ability.name}... but it's drained! ${defenderText} heals ${healedAmount} HP! 💉`);
+        return true;
+      }
+      else if (isRepel) {
+        attacker.hp -= baseDamage;
+        await message.channel.send(`${attackerText} uses ${move.emoji} ${ability.name}... it's reflected! ${attackerText} takes ${baseDamage} damage! 🔁`);
+        return true;
+      }
+      else {
+        // No special resistances
+        await message.channel.send(`${attackerText} uses ${move.emoji} ${ability.name}...`);
       }
 
       const critChance = move.crit ?? 0.1;
@@ -109,30 +127,28 @@ module.exports = {
         baseDamage = Math.floor(baseDamage * 1.5);
         await message.channel.send(`Critical hit! 💥`);
       }
-      defender.hp -= baseDamage;
       
-      await message.channel.send(`${attackerText} uses ${move.emoji} ${ability.name} and deals ${baseDamage} damage!`);
+      defender.hp -= baseDamage;
+      await message.channel.send(`${defenderText} takes ${baseDamage} damage!`);
+      
+      return true;
     }
   },
 
-  // Função para implementar a lógica de guarda
+  // Proper implementation of guard action
   async executeGuard(attacker, message) {
-    // Define a flag de guarda - esta é a lógica de guarda que você pode precisar ajustar
-    attacker.isGuarding = true;
+    // Use the guardAction function from damageCalculator
+    guardAction(attacker);
     
-    // Redução de dano e outros efeitos de guarda podem ser definidos aqui
-    // O contexto.isGuarding já é verificado em calculateDamage
+    const attackerText = attacker.userId ? `<@${attacker.userId}> (${attacker.name})` : attacker.name;
+    await message.channel.send(`${attackerText} assumes a defensive stance! 🛡️ `);
     
-    await message.channel.send(`${attacker.userId ? `<@${attacker.userId}>` : attacker.name} assumes a defensive stance! 🛡️`);
-    
-    // Redefina o estado de guarda no final do turno (isso deverá ser chamado em outro lugar)
-    // Talvez adicionar uma função resetGuard() que será chamada no início de cada turno
     return true;
   },
 
-  // Nova função para executar um ataque básico
+  // Basic attack implementation
   async executeBasicAttack(attacker, defender, message, demons, attackerText, defenderText) {
-    // Criar um movimento básico de ataque
+    // Create a basic attack move
     const basicAttackMove = {
       name: "Attack",
       type: "Physical", 
@@ -148,44 +164,105 @@ module.exports = {
     let context = {
       attackStageMultiplier: 1,
       defenseStageMultiplier: 1,
-      isGuarding: false
+      isGuarding: defender.isGuarding || false
     };
 
-    // Cálculo de acerto
+    // Calculate hit chance
     const accuracy = basicAttackMove.accuracy;
     const roll = Math.random() * 100;
     if (roll > accuracy) {
       await message.channel.send(`${attackerText} attacks... but it MISSES!`);
-      return;
+      return true;
     }
 
-    // Calcular dano
+    // Calculate damage
     let baseDamage = calculateDamage(attacker, defender, basicAttackMove, context);
     
-    // Aplicar crítico
-    const critChance = 0.1; // 10% de chance de crítico para ataques básicos
+    // Apply critical hit chance
+    const critChance = 0.1; // 10% chance for critical hit for basic attacks
     const isCrit = Math.random() < critChance;
     if (isCrit) {
       baseDamage = Math.floor(baseDamage * 1.5);
       await message.channel.send(`Critical hit! 💥`);
     }
     
-    // Aplicar dano
+    // Apply damage
     defender.hp -= baseDamage;
     
     await message.channel.send(`${attackerText} attacks and deals ${baseDamage} damage!`);
+    return true;
   },
 
-  // Estado do menu principal
-  battleMenuState: {},
+  // AI logic for enemy turn
+  async executeEnemyTurn(message, battleData, demons) {
+    const enemy = battleData.enemy;
+    const player = battleData.player;
+    
+    // Simple AI logic - prioritize healing at low health, 
+    // guard occasionally, and otherwise use best attack
+    
+    const healingMove = enemy.abilities.find(name => {
+      const move = moves[name];
+      return move && move.type === 'Healing' && enemy.sp >= move.sp;
+    });
+    
+    // If HP is below 30% and we have a healing move, use it
+    if (enemy.hp < enemy.maxHp * 0.3 && healingMove) {
+      await this.executeAbility(
+        enemy, 
+        player, 
+        { name: healingMove }, 
+        message, 
+        demons, 
+        enemy.name, 
+        player.name
+      );
+      return;
+    }
+    
+    // 15% chance to guard
+    if (Math.random() < 0.15) {
+      await this.executeGuard(enemy, message);
+      return;
+    }
+    
+    // Try to use a random ability if we have SP
+    const usableAbilities = enemy.abilities.filter(name => {
+      const move = moves[name];
+      return move && enemy.sp >= move.sp;
+    });
+    
+    if (usableAbilities.length > 0) {
+      const abilityName = usableAbilities[Math.floor(Math.random() * usableAbilities.length)];
+      await this.executeAbility(
+        enemy, 
+        player, 
+        { name: abilityName }, 
+        message, 
+        demons, 
+        enemy.name, 
+        player.name
+      );
+    } else {
+      // Fall back to basic attack
+      await this.executeBasicAttack(
+        enemy,
+        player,
+        message,
+        demons,
+        enemy.name,
+        player.name
+      );
+    }
+  },
 
   async displayBattleStatus(message, player, enemy, isPlayerTurn = true) {
     const attacker = isPlayerTurn ? player : enemy;
     const userId = attacker.userId;
     
-    if (!this.battleMenuState[userId]) {
-      this.battleMenuState[userId] = {
-        currentMenu: 'main', // 'main' ou 'skills'
+    if (!battleMenuState[userId]) {
+      battleMenuState[userId] = {
+        currentMenu: 'main', // 'main' or 'skills'
       };
     }
   
@@ -193,22 +270,32 @@ module.exports = {
     const enemyMention = enemy.userId ? ` (<@${enemy.userId}>)` : '';
     const attackerMention = attacker.userId ? `<@${attacker.userId}>` : attacker.name;
   
-    let battleStatus = `**${player.name}** Lv${player.level}${playerMention}\nHP: ${player.hp} / ${player.maxHp} | SP: ${player.sp} / ${player.maxSp}\n\n` +
-                       `**${enemy.name}** Lv${enemy.level}${enemyMention}\nHP: ${enemy.hp} / ${enemy.maxHp} | SP: ${enemy.sp} / ${enemy.maxSp}`;
+    let battleStatus = `**${player.name}** Lv${player.level}${playerMention}\nHP: ${player.hp} / ${player.maxHp} | SP: ${player.sp} / ${player.maxSp}`;
+    
+    // Show guard status if active
+    if (player.isGuarding) {
+      battleStatus += " 🛡️";
+    }
+    
+    battleStatus += `\n\n**${enemy.name}** Lv${enemy.level}${enemyMention}\nHP: ${enemy.hp} / ${enemy.maxHp} | SP: ${enemy.sp} / ${enemy.maxSp}`;
+    
+    if (enemy.isGuarding) {
+      battleStatus += " 🛡️";
+    }
   
     if (isPlayerTurn !== null) {
       battleStatus += `\n\n${attackerMention}, it's your turn!`;
       
-      // Exibir menu apropriado baseado no estado atual
-      if (this.battleMenuState[userId].currentMenu === 'main') {
-        // Menu principal
+      // Display appropriate menu based on current state
+      if (battleMenuState[userId].currentMenu === 'main') {
+        // Main menu
         battleStatus += `\nChoose an action:\n`;
-        battleStatus += `1. 🗡️ Attack - Basic physical attack\n`;
-        battleStatus += `2. 📜 Skills - Use demon abilities\n`;
-        battleStatus += `3. 🛡️ Guard - Defensive stance\n`;
+        battleStatus += `1. 🗡️ Attack\n`;
+        battleStatus += `2. 📜 Skills\n`;
+        battleStatus += `3. 🛡️ Guard\n`;
         battleStatus += `\nType the number of your choice.`;
-      } else if (this.battleMenuState[userId].currentMenu === 'skills') {
-        // Submenu de habilidades
+      } else if (battleMenuState[userId].currentMenu === 'skills') {
+        // Skills submenu
         battleStatus += `\nChoose a skill:\n${attacker.abilities.map((name, i) => {
           const move = moves[name];
           return move
@@ -222,73 +309,74 @@ module.exports = {
     await message.channel.send(battleStatus);
   },
   
-  // Função para processar a entrada do usuário com base no estado do menu
+  // Process user input based on menu state
   async processMenuInput(message, input, battleData, demons, isPlayerTurn) {
     const attacker = isPlayerTurn ? battleData.player : battleData.enemy;
     const defender = isPlayerTurn ? battleData.enemy : battleData.player;
     const userId = attacker.userId;
     
-    // Garantir que battleMenuState para este usuário existe
-    if (!this.battleMenuState[userId]) {
-      this.battleMenuState[userId] = { currentMenu: 'main' };
+    // Ensure battleMenuState for this user exists
+    if (!battleMenuState[userId]) {
+      battleMenuState[userId] = { currentMenu: 'main' };
     }
     
-    const menuState = this.battleMenuState[userId];
+    const menuState = battleMenuState[userId];
     const choice = parseInt(input);
     
-    // Referências de texto para mensagens
+    // Text references for messages
     const attackerText = attacker.userId ? `<@${attacker.userId}> (${attacker.name})` : attacker.name;
     const defenderText = defender.userId ? `<@${defender.userId}> (${defender.name})` : defender.name;
     
-    // Processar input com base no menu atual
+    // Process input based on current menu
     if (menuState.currentMenu === 'main') {
       switch (choice) {
         case 1: // Attack
-          await this.executeBasicAttack(attacker, defender, message, demons, attackerText, defenderText);
-          return true; // Ação completa
+          return await this.executeBasicAttack(attacker, defender, message, demons, attackerText, defenderText);
           
-        case 2: // Skills - mudar para submenu
+        case 2: // Skills - change to submenu
           menuState.currentMenu = 'skills';
           await this.displayBattleStatus(message, battleData.player, battleData.enemy, isPlayerTurn);
-          return false; // Ação não completa, aguardar nova entrada
+          return false; // Action not complete, await new input
           
         case 3: // Guard
-          await this.executeGuard(attacker, message);
-          return true; // Ação completa
+          return await this.executeGuard(attacker, message);
           
         default:
           await message.channel.send(`Invalid option. Please choose 1, 2, or 3.`);
-          return false; // Ação não completa, aguardar nova entrada
+          return false; // Action not complete, await new input
       }
     } 
     else if (menuState.currentMenu === 'skills') {
       if (choice === 0) {
-        // Voltar para o menu principal
+        // Return to main menu
         menuState.currentMenu = 'main';
         await this.displayBattleStatus(message, battleData.player, battleData.enemy, isPlayerTurn);
-        return false; // Ação não completa, aguardar nova entrada
+        return false; // Action not complete, await new input
       }
       
-      // Usar habilidade
+      // Use ability
       const abilityIndex = choice - 1;
       if (abilityIndex >= 0 && abilityIndex < attacker.abilities.length) {
         const abilityName = attacker.abilities[abilityIndex];
-        await this.executeAbility(attacker, defender, { name: abilityName }, message, demons, attackerText, defenderText);
-        menuState.currentMenu = 'main'; // Retornar ao menu principal após usar habilidade
-        return true; // Ação completa
+        const result = await this.executeAbility(attacker, defender, { name: abilityName }, message, demons, attackerText, defenderText);
+        menuState.currentMenu = 'main'; // Return to main menu after using ability
+        return result; // Action complete if ability was used successfully
       } else {
         await message.channel.send(`Invalid skill choice. Please try again.`);
-        return false; // Ação não completa, aguardar nova entrada
+        return false; // Action not complete, await new input
       }
     }
     
     return false; 
   },
   
-  // Função para resetar o estado do menu para um usuário
+  // Reset menu state for a user
   resetMenuState(userId) {
-    if (this.battleMenuState[userId]) {
-      this.battleMenuState[userId].currentMenu = 'main';
+    if (battleMenuState[userId]) {
+      battleMenuState[userId].currentMenu = 'main';
     }
-  }
+  },
+  
+  // Export battleMenuState for use in other modules
+  battleMenuState
 };

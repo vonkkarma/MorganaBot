@@ -8,7 +8,7 @@
     "magic": 7,
     "vitality": 4,
     "speed": 8,
-    "abilities": ["Bash", "Dia", "Garu"],
+    "abilities": ["Dia", "Garu"],
     "resistances": {
       "weak": ["Dark"],
       "resist": ["Wind"],
@@ -26,7 +26,7 @@
     "magic": 29,
     "vitality": 15,
     "speed": 21,
-    "abilities": ["Bash", "Bufu"],
+    "abilities": ["Bufu"],
     "resistances": {
       "weak": ["Fire"],
       "resist": [],
@@ -44,7 +44,7 @@
     "vitality": 9,
     "magic": 14,
     "speed": 11,
-    "abilities": ["Zio", "Bash", "Dia"],
+    "abilities": ["Zio", "Dia"],
     "resistances": {
       "weak": ["Ice"],
       "resist": [],
@@ -62,7 +62,7 @@
     "vitality": 8,
     "magic": 8,
     "speed": 7,
-    "abilities": ["Bash", "Agi"],
+    "abilities": ["Agi"],
     "resistances": {
       "weak": ["Ice", "Wind"],
       "resist": ["Fire"],
@@ -80,7 +80,7 @@
     "vitality": 7,
     "magic": 9,
     "speed": 11,
-    "abilities": ["Bash", "Zio"],
+    "abilities": ["Zio"],
     "resistances": {
       "weak": ["Fire"],
       "resist": ["Elec"],
@@ -98,7 +98,7 @@
     "vitality": 7,
     "magic": 10,
     "speed": 7,
-    "abilities": ["Bash", "Dia", "Zio"],
+    "abilities": ["Dia", "Zio"],
     "resistances": {
       "weak": ["Wind"],
       "resist": ["Elec"],
@@ -116,7 +116,7 @@
     "vitality": 9,
     "magic": 17,
     "speed": 11,
-    "abilities": ["Bash", "Garu"],
+    "abilities": ["Garu"],
     "resistances": {
       "weak": ["Elec"],
       "resist": ["Wind"],
@@ -134,7 +134,7 @@
     "vitality": 16,
     "magic": 18,
     "speed": 27,
-    "abilities": ["Bash", "Garula", "Garu"],
+    "abilities": ["Garula", "Garu"],
     "resistances": {
       "weak": ["Elec"],
       "resist": ["Wind"],
@@ -152,7 +152,7 @@
     "vitality": 13,
     "magic": 12,
     "speed": 20,
-    "abilities": ["Bash", "Garula"],
+    "abilities": ["Garula"],
     "resistances": {
       "weak": ["Elec", "Light"],
       "resist": [],
@@ -170,7 +170,7 @@
     "vitality": 12,
     "magic": 13,
     "speed": 20,
-    "abilities": ["Bash", "Garula","Zio", "Dia"],
+    "abilities": ["Garula","Zio", "Dia"],
     "resistances": {
       "weak": ["Ice"],
       "resist": ["Wind"],
