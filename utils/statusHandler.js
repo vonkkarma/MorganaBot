@@ -159,80 +159,103 @@ async function processStatusEffectsEnd(demon, message) {
 
 // Handle applying an ailment or buff from a skill
 async function applyStatusFromSkill(attacker, target, move, message) {
-  // Check for ailment application
-  if (move.ailment) {
-    const resistStat = statusEffects[move.ailment]?.resistStat || 'vitality';
-    let baseChance = move.ailmentChance || statusEffects[move.ailment]?.chance || 40;
+    let statusApplied = false;
     
-    // Adjust chance based on target's resistance stat vs attacker's magic/strength
-    const attackStat = move.usesMagic ? attacker.magic : attacker.strength;
-    const resistValue = target[resistStat] || 10;
-    const statRatio = attackStat / resistValue;
-    
-    // Modify chance based on stat ratio with diminishing returns
-    baseChance *= Math.min(1.5, Math.sqrt(statRatio));
-    
-    // Roll for application
-    const roll = Math.random() * 100;
-    if (roll <= baseChance) {
-      const result = addStatusEffect(target, move.ailment, attacker.name);
-      
-      if (result.success) {
+    // Check for ailment application
+    if (move.ailment) {
+      // Skip if target already has this status
+      if (hasStatusEffect(target, move.ailment)) {
         const targetName = target.userId ? `<@${target.userId}> (${target.name})` : target.name;
-        await message.channel.send(`${targetName} is afflicted with ${statusEffects[move.ailment].emoji} ${statusEffects[move.ailment].name}!`);
-        return true;
+        await message.channel.send(`${targetName} is already affected by ${statusEffects[move.ailment]?.name || move.ailment}!`);
       } else {
-        if (result.reason === 'immune') {
+        // Check for complete immunity first
+        if (target.resistances?.ailmentNull?.includes(move.ailment)) {
           const targetName = target.userId ? `<@${target.userId}> (${target.name})` : target.name;
-          await message.channel.send(`${targetName} is immune to ${statusEffects[move.ailment].name}!`);
-        } else if (result.reason === 'already_afflicted') {
-          const targetName = target.userId ? `<@${target.userId}> (${target.name})` : target.name;
-          await message.channel.send(`${targetName} is already afflicted with another ailment!`);
+          await message.channel.send(`${targetName} is immune to ${statusEffects[move.ailment]?.name || move.ailment}!`);
+        } else {
+          // Calculate chance based on stats
+          const resistStat = statusEffects[move.ailment]?.resistStat || 'vitality';
+          let baseChance = move.ailmentChance || statusEffects[move.ailment]?.chance || 40;
+          
+          // Adjust chance based on target's resistance stat vs attacker's magic/strength
+          const attackStat = move.usesMagic ? attacker.magic : attacker.strength;
+          const resistValue = target[resistStat] || 10;
+          const statRatio = attackStat / resistValue;
+          
+          // Modify chance based on stat ratio with diminishing returns
+          baseChance *= Math.min(1.5, Math.sqrt(statRatio));
+          
+          // Check for resistance and reduce chance if applicable
+          if (target.resistances?.ailmentResist?.includes(move.ailment)) {
+            baseChance *= 0.5; // 50% reduction in success chance
+          }
+          
+          // Roll for application
+          const roll = Math.random() * 100;
+          if (roll <= baseChance) {
+            const result = await addStatusEffect(target, move.ailment, attacker.name);
+            
+            if (result.success) {
+              const targetName = target.userId ? `<@${target.userId}> (${target.name})` : target.name;
+              await message.channel.send(`${targetName} is afflicted with ${statusEffects[move.ailment].emoji || ''} ${statusEffects[move.ailment].name || move.ailment}!`);
+              statusApplied = true;
+            } else {
+              if (result.reason === 'immune') {
+                const targetName = target.userId ? `<@${target.userId}> (${target.name})` : target.name;
+                await message.channel.send(`${targetName} is immune to ${statusEffects[move.ailment].name || move.ailment}!`);
+              } else if (result.reason === 'already_afflicted') {
+                const targetName = target.userId ? `<@${target.userId}> (${target.name})` : target.name;
+                await message.channel.send(`${targetName} is already afflicted with another ailment!`);
+              }
+            }
+          } else {
+            const targetName = target.userId ? `<@${target.userId}> (${target.name})` : target.name;
+            await message.channel.send(`${targetName} resisted the ${statusEffects[move.ailment]?.name || move.ailment} effect!`);
+          }
         }
       }
     }
-  }
-  
-  // Check for buff application
-  if (move.buff) {
-    const result = addStatusEffect(target, move.buff, attacker.name);
     
-    if (result.success) {
-      const effect = statusEffects[move.buff];
-      const targetName = target.userId ? `<@${target.userId}> (${target.name})` : target.name;
+    // Check for buff application
+    if (move.buff) {
+      const result = await addStatusEffect(attacker, move.buff, attacker.name);
       
-      if (result.stacked) {
-        await message.channel.send(`${effect.emoji} ${effect.name} on ${targetName} is strengthened! (×${result.status.stacks})`);
-      } else if (result.refreshed) {
-        await message.channel.send(`${effect.emoji} ${effect.name} on ${targetName} is extended!`);
-      } else {
-        await message.channel.send(`${targetName} gains ${effect.emoji} ${effect.name}!`);
+      if (result.success) {
+        const effect = statusEffects[move.buff];
+        const attackerName = attacker.userId ? `<@${attacker.userId}> (${attacker.name})` : attacker.name;
+        
+        if (result.stacked) {
+          await message.channel.send(`${effect.emoji || ''} ${effect.name || move.buff} on ${attackerName} is strengthened! (×${result.status.stacks})`);
+        } else if (result.refreshed) {
+          await message.channel.send(`${effect.emoji || ''} ${effect.name || move.buff} on ${attackerName} is extended!`);
+        } else {
+          await message.channel.send(`${attackerName} gains ${effect.emoji || ''} ${effect.name || move.buff}!`);
+        }
+        statusApplied = true;
       }
-      return true;
     }
-  }
-  
-  // Check for debuff application
-  if (move.debuff) {
-    const result = addStatusEffect(target, move.debuff, attacker.name);
     
-    if (result.success) {
-      const effect = statusEffects[move.debuff];
-      const targetName = target.userId ? `<@${target.userId}> (${target.name})` : target.name;
+    // Check for debuff application
+    if (move.debuff) {
+      const result = await addStatusEffect(target, move.debuff, attacker.name);
       
-      if (result.stacked) {
-        await message.channel.send(`${effect.emoji} ${effect.name} on ${targetName} is strengthened! (×${result.status.stacks})`);
-      } else if (result.refreshed) {
-        await message.channel.send(`${effect.emoji} ${effect.name} on ${targetName} is extended!`);
-      } else {
-        await message.channel.send(`${targetName} suffers from ${effect.emoji} ${effect.name}!`);
+      if (result.success) {
+        const effect = statusEffects[move.debuff];
+        const targetName = target.userId ? `<@${target.userId}> (${target.name})` : target.name;
+        
+        if (result.stacked) {
+          await message.channel.send(`${effect.emoji || ''} ${effect.name || move.debuff} on ${targetName} is strengthened! (×${result.status.stacks})`);
+        } else if (result.refreshed) {
+          await message.channel.send(`${effect.emoji || ''} ${effect.name || move.debuff} on ${targetName} is extended!`);
+        } else {
+          await message.channel.send(`${targetName} suffers from ${effect.emoji || ''} ${effect.name || move.debuff}!`);
+        }
+        statusApplied = true;
       }
-      return true;
     }
+    
+    return statusApplied;
   }
-  
-  return false;
-}
 
 // Check for instakill success
 async function checkInstakill(attacker, target, move, message) {

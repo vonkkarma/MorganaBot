@@ -97,6 +97,29 @@ module.exports = {
 
       return true;
     }
+    // Handle pure status/ailment moves WITH accuracy check
+    else if (move.power === 0 || move.isPureStatus) {
+      await message.channel.send(`${attackerText} uses ${move.emoji} ${ability.name}...`);
+      
+      // Calculate accuracy with status effect modifiers - for status moves too!
+      const attackerMods = getStatusEffectModifiers(attacker);
+      const defenderMods = getStatusEffectModifiers(defender);
+      
+      const accuracy = (move.accuracy ?? 100) * 
+                      (attackerMods.accuracyMultiplier ?? 1.0) / 
+                      (defenderMods.evasionMultiplier ?? 1.0);
+                      
+      const roll = Math.random() * 100;
+      if (roll > accuracy) {
+        await message.channel.send(`... but it MISSES!`);
+        return true;
+      }
+      
+      // We hit - apply the status effect
+      await statusHandler.applyStatusFromSkill(attacker, defender, move, message);
+      
+      return true;
+    }
     else {
       const resist = defender.resistances;
 

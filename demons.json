@@ -10,11 +10,13 @@
     "speed": 8,
     "abilities": ["Dia", "Garu"],
     "resistances": {
-      "weak": ["Dark"],
-      "resist": ["Wind"],
-      "null": [],
-      "drain": [],
-      "repel": []
+    "weak": ["Dark"],
+    "resist": ["Wind"],
+    "null": [],
+    "drain": [],
+    "repel": [],
+    "ailmentResist": [],
+    "ailmentNull": []  
     }
   },
   "Jack Frost": {
@@ -26,13 +28,15 @@
     "magic": 29,
     "vitality": 15,
     "speed": 21,
-    "abilities": ["Bufu"],
+    "abilities": ["Bufu", "Debilitate"],
     "resistances": {
-      "weak": ["Fire"],
-      "resist": [],
-      "null": [],
-      "drain": ["Ice"],
-      "repel": []
+    "weak": ["Fire"],
+    "resist": [],
+    "null": [],
+    "drain": ["Ice"],
+    "repel": [],
+    "ailmentResist": [],
+    "ailmentNull": []  
     }
   },
   "Agathion": {
@@ -46,11 +50,13 @@
     "speed": 11,
     "abilities": ["Zio", "Dia"],
     "resistances": {
-      "weak": ["Ice"],
-      "resist": [],
-      "null": ["Elec"],
-      "drain": [],
-      "repel": []
+    "weak": ["Ice"],
+    "resist": [],
+    "null": ["Elec"],
+    "drain": [],
+    "repel": [],
+    "ailmentResist": [],
+    "ailmentNull": []  
     }
   },
   "Onmoraki": {
@@ -64,11 +70,13 @@
     "speed": 7,
     "abilities": ["Agi"],
     "resistances": {
-      "weak": ["Ice", "Wind"],
-      "resist": ["Fire"],
-      "null": [],
-      "drain": [],
-      "repel": []
+    "weak": ["Ice", "Wind"],
+    "resist": ["Fire"],
+    "null": [],
+    "drain": [],
+    "repel": [],
+    "ailmentResist": [],
+    "ailmentNull": []  
     }
   },
   "Mandrake": {
@@ -82,11 +90,13 @@
     "speed": 11,
     "abilities": ["Zio"],
     "resistances": {
-      "weak": ["Fire"],
-      "resist": ["Elec"],
-      "null": [],
-      "drain": [],
-      "repel": []
+    "weak": ["Fire"],
+    "resist": ["Elec"],
+    "null": [],
+    "drain": [],
+    "repel": [],
+    "ailmentResist": [],
+    "ailmentNull": []  
     }
   },
   "Cait Sith": {
@@ -100,11 +110,13 @@
     "speed": 7,
     "abilities": ["Dia", "Zio"],
     "resistances": {
-      "weak": ["Wind"],
-      "resist": ["Elec"],
-      "null": [],
-      "drain": [],
-      "repel": []
+    "weak": ["Wind"],
+    "resist": ["Elec"],
+    "null": [],
+    "drain": [],
+    "repel": [],
+    "ailmentResist": [],
+    "ailmentNull": []  
     }
   },
   "Aeros": {
@@ -116,13 +128,15 @@
     "vitality": 9,
     "magic": 17,
     "speed": 11,
-    "abilities": ["Garu"],
+    "abilities": ["Garu", "Brainwash"],
     "resistances": {
-      "weak": ["Elec"],
-      "resist": ["Wind"],
-      "null": [],
-      "drain": [],
-      "repel": []
+    "weak": ["Elec"],
+    "resist": ["Wind"],
+    "null": [],
+    "drain": [],
+    "repel": [],
+    "ailmentResist": [],
+    "ailmentNull": []  
     }
   },
   "Koppa Tengu": {
@@ -134,13 +148,15 @@
     "vitality": 16,
     "magic": 18,
     "speed": 27,
-    "abilities": ["Garula", "Garu"],
+    "abilities": ["Garula", "Garu", "Tarunda", "Rakukaja"],
     "resistances": {
-      "weak": ["Elec"],
-      "resist": ["Wind"],
-      "null": [],
-      "drain": [],
-      "repel": []
+    "weak": ["Elec"],
+    "resist": ["Wind"],
+    "null": [],
+    "drain": [],
+    "repel": [],
+    "ailmentResist": ["sleep"],
+    "ailmentNull": []  
     }
   },
   "Andras": {
@@ -152,13 +168,15 @@
     "vitality": 13,
     "magic": 12,
     "speed": 20,
-    "abilities": ["Garula", "Poisma"],
+    "abilities": ["Garula", "Poisma", "Hama"],
     "resistances": {
-      "weak": ["Elec", "Light"],
-      "resist": [],
-      "null": ["Ice"],
-      "drain": [],
-      "repel": []
+    "weak": ["Elec", "Light"],
+    "resist": [],
+    "null": ["Ice"],
+    "drain": [],
+    "repel": [],
+    "ailmentResist": ["charm"],
+    "ailmentNull": []  
     }
   },
   "High Pixie": {
@@ -172,11 +190,13 @@
     "speed": 20,
     "abilities": ["Garula","Zio", "Dia", "Dormina"],
     "resistances": {
-      "weak": ["Ice"],
-      "resist": ["Wind"],
-      "null": [],
-      "drain": [],
-      "repel": []
+    "weak": ["Ice"],
+    "resist": ["Wind"],
+    "null": [],
+    "drain": [],
+    "repel": [],
+    "ailmentResist": [],
+    "ailmentNull": []  
     }
   }
 }
