@@ -15,13 +15,13 @@ function getLevelCorrectionMultiplier(attacker, defender) {
 
   if (defender.level - attacker.level >= 3) {
     const penalty = Math.sqrt(defender.level / attacker.level - 1) *
-                    sumFactor * (defender.level - attacker.level - 2);
+      sumFactor * (defender.level - attacker.level - 2);
     return Math.max(1 - penalty, 0.5);
   }
 
   if (attacker.level - defender.level >= 3) {
     const boost = Math.sqrt(1 - defender.level / attacker.level) *
-                  sumFactor * (attacker.level - defender.level - 2) * 1.2;
+      sumFactor * (attacker.level - defender.level - 2) * 1.2;
     return Math.min(1 + boost, 1.5);
   }
 
@@ -51,18 +51,28 @@ function getStatusEffectModifiers(demon) {
  * @returns {boolean} - Whether the attacker should target allies
  */
 function shouldTargetAlly(attacker) {
-  // Check for charm status effect
+
+
+  // Direct array check for brainwash effect first
+  const brainwashEffect = attacker.statusEffects?.find(effect =>
+    effect.name.toLowerCase() === 'brainwash' &&
+    effect.turnsRemaining > 0
+  );
+
+  if (brainwashEffect) {
+    // Use the healEnemyChance from the status effect
+    const healChance = brainwashEffect.healEnemyChance ?? 50; // Default to 50% if not specified
+    const roll = Math.random() * 100;
+
+    return roll < healChance;
+  }
+
+  // Then check for charm
   if (statusHandler.hasStatusEffect(attacker, 'charm')) {
     const charmEffect = statusHandler.getStatusEffect(attacker, 'charm');
-    return Math.random() * 100 < charmEffect.targetAllyChance;
+    return Math.random() * 100 < (charmEffect?.targetAllyChance || 0);
   }
-  
-  // Check for brainwash status effect
-  if (statusHandler.hasStatusEffect(attacker, 'brainwash')) {
-    const brainwashEffect = statusHandler.getStatusEffect(attacker, 'brainwash');
-    return Math.random() * 100 < brainwashEffect.healEnemyChance;
-  }
-  
+
   return false;
 }
 
@@ -117,15 +127,15 @@ function calculateDamage(attacker, defender, skill, context = {}) {
   let modified = base;
   context.levelCorrectionMultiplier = getLevelCorrectionMultiplier(attacker, defender);
   modified *= skill.power / 100;
-  
+
   // Apply status effect multipliers if not already provided in context
-  const attackStageMultiplier = context.attackStageMultiplier || 
-                               (skill.usesStrength ? attackerModifiers.strengthMultiplier : 
-                                skill.usesMagic ? attackerModifiers.magicMultiplier : 1.0);
-  
-  const defenseStageMultiplier = context.defenseStageMultiplier || 
-                                defenderModifiers.defenseMultiplier || 1.0;
-  
+  const attackStageMultiplier = context.attackStageMultiplier ||
+    (skill.usesStrength ? attackerModifiers.strengthMultiplier :
+      skill.usesMagic ? attackerModifiers.magicMultiplier : 1.0);
+
+  const defenseStageMultiplier = context.defenseStageMultiplier ||
+    defenderModifiers.defenseMultiplier || 1.0;
+
   modified *= attackStageMultiplier;
   modified *= defenseStageMultiplier;
   modified *= context.chargeMultiplier ?? 1;
@@ -136,17 +146,17 @@ function calculateDamage(attacker, defender, skill, context = {}) {
   modified *= context.levelCorrectionMultiplier ?? 1;
   modified *= context.difficultyMultiplier ?? 1;
   modified *= context.exploitMultiplier ?? 1;
-  
+
   // Apply guard effect - 20% damage reduction
   modified *= context.isGuarding ? 0.8 : 1;
-  
+
   // Apply vulnerability modifiers from status effects
   if (skill.type === "Physical" || skill.usesStrength) {
     modified *= defenderModifiers.physicalVulnerability || 1.0;
   } else if (skill.usesMagic) {
     modified *= defenderModifiers.magicalVulnerability || 1.0;
   }
-  
+
   modified *= context.enemySpecificMultiplier ?? 1;
   modified *= context.innateSkillMultiplier ?? 1;
 
@@ -157,9 +167,9 @@ function calculateDamage(attacker, defender, skill, context = {}) {
 
   // Apply accuracy and evasion modifiers for hit calculation
   // This is separate from damage but useful to expose
-  context.finalAccuracy = (skill.accuracy || 100) * 
-                         (attackerModifiers.accuracyMultiplier || 1.0) / 
-                         (defenderModifiers.evasionMultiplier || 1.0);
+  context.finalAccuracy = (skill.accuracy || 100) *
+    (attackerModifiers.accuracyMultiplier || 1.0) /
+    (defenderModifiers.evasionMultiplier || 1.0);
 
   return Math.max(Math.floor(modified), 1);
 }
@@ -183,10 +193,10 @@ function checkStatusBreakOnDamage(demon, damageType) {
   return statusHandler.handleStatusBreakOnDamage(demon, damageType);
 }
 
-module.exports = { 
-  calculateDamage, 
-  basicAttack, 
-  guardAction, 
+module.exports = {
+  calculateDamage,
+  basicAttack,
+  guardAction,
   shouldTargetAlly,
   checkStatusBreakOnDamage,
   getStatusEffectModifiers

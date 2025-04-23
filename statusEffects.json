@@ -1,233 +1,233 @@
 {
-    "poison": {
-      "name": "Poison",
-      "emoji": "☠️",
-      "type": "ailment",
-      "turnDuration": 3,
-      "chance": 40,
-      "resistStat": "vitality",
-      "description": "Deals damage at the end of each turn.",
-      "turnEffect": {
-        "damagePercent": 0.1
-      },
-      "battleEffect": {
-        "magicMultiplier": 1.0,
-        "strengthMultiplier": 1.0,
-        "accuracyMultiplier": 1.0,
-        "evasionMultiplier": 1.0
-      },
-      "canAct": true
+  "poison": {
+    "name": "Poison",
+    "emoji": "☠️",
+    "type": "ailment",
+    "turnDuration": 3,
+    "chance": 40,
+    "resistStat": "vitality",
+    "description": "Deals damage at the end of each turn.",
+    "turnEffect": {
+      "damagePercent": 0.1
     },
-    "sleep": {
-      "name": "Sleep",
-      "emoji": "💤",
-      "type": "ailment",
-      "turnDuration": 3,
-      "chance": 35,
-      "resistStat": "magic",
-      "description": "Unable to act. Wakes up when hit.",
-      "battleEffect": {
-        "magicMultiplier": 1.0,
-        "strengthMultiplier": 1.0,
-        "accuracyMultiplier": 0,
-        "evasionMultiplier": 0.3
-      },
-      "canAct": false,
-      "breakOnDamage": true
+    "battleEffect": {
+      "magicMultiplier": 1.0,
+      "strengthMultiplier": 1.0,
+      "accuracyMultiplier": 1.0,
+      "evasionMultiplier": 1.0
     },
-    "charm": {
-      "name": "Charm",
-      "emoji": "💘",
-      "type": "ailment",
-      "turnDuration": 3,
-      "chance": 30,
-      "resistStat": "magic",
-      "description": "May attack allies instead of enemies.",
-      "battleEffect": {
-        "magicMultiplier": 1.0,
-        "strengthMultiplier": 1.0,
-        "accuracyMultiplier": 0.8,
-        "evasionMultiplier": 0.8
-      },
-      "canAct": true,
-      "targetAllyChance": 60
+    "canAct": true
+  },
+  "sleep": {
+    "name": "Sleep",
+    "emoji": "💤",
+    "type": "ailment",
+    "turnDuration": 3,
+    "chance": 35,
+    "resistStat": "magic",
+    "description": "Unable to act. Wakes up when hit.",
+    "battleEffect": {
+      "magicMultiplier": 1.0,
+      "strengthMultiplier": 1.0,
+      "accuracyMultiplier": 0,
+      "evasionMultiplier": 0.3
     },
-    "shock": {
-      "name": "Shock",
-      "emoji": "⚡",
-      "type": "ailment",
-      "turnDuration": 3,
-      "chance": 40,
-      "resistStat": "vitality",
-      "description": "Occasionally loses a turn and takes extra damage from physical attacks.",
-      "battleEffect": {
-        "magicMultiplier": 1.0,
-        "strengthMultiplier": 1.0,
-        "accuracyMultiplier": 0.7,
-        "evasionMultiplier": 0.7,
-        "physicalVulnerability": 1.25
-      },
-      "canAct": true,
-      "skipTurnChance": 30
+    "canAct": false,
+    "breakOnDamage": true
+  },
+  "charm": {
+    "name": "Charm",
+    "emoji": "💘",
+    "type": "ailment",
+    "turnDuration": 3,
+    "chance": 30,
+    "resistStat": "magic",
+    "description": "May attack allies instead of enemies.",
+    "battleEffect": {
+      "magicMultiplier": 1.0,
+      "strengthMultiplier": 1.0,
+      "accuracyMultiplier": 0.8,
+      "evasionMultiplier": 0.8
     },
-    "freeze": {
-      "name": "Freeze",
-      "emoji": "❄️",
-      "type": "ailment",
-      "turnDuration": 3,
-      "chance": 35,
-      "resistStat": "vitality",
-      "description": "Unable to act. Melts when hit by fire.",
-      "battleEffect": {
-        "magicMultiplier": 1.0,
-        "strengthMultiplier": 1.0,
-        "accuracyMultiplier": 0,
-        "evasionMultiplier": 0.5
-      },
-      "canAct": false,
-      "weakTo": "Fire"
+    "canAct": true,
+    "targetAllyChance": 60
+  },
+  "shock": {
+    "name": "Shock",
+    "emoji": "⚡",
+    "type": "ailment",
+    "turnDuration": 3,
+    "chance": 40,
+    "resistStat": "vitality",
+    "description": "Occasionally loses a turn and takes extra damage from physical attacks.",
+    "battleEffect": {
+      "magicMultiplier": 1.0,
+      "strengthMultiplier": 1.0,
+      "accuracyMultiplier": 0.7,
+      "evasionMultiplier": 0.7,
+      "physicalVulnerability": 1.25
     },
-    "burn": {
-      "name": "Burn",
-      "emoji": "🔥",
-      "type": "ailment",
-      "turnDuration": 4,
-      "chance": 40,
-      "resistStat": "vitality",
-      "description": "Takes damage each turn and deals less physical damage.",
-      "turnEffect": {
-        "damagePercent": 0.08
-      },
-      "battleEffect": {
-        "magicMultiplier": 1.0,
-        "strengthMultiplier": 0.7,
-        "accuracyMultiplier": 1.0,
-        "evasionMultiplier": 1.0
-      },
-      "canAct": true,
-      "weakTo": "Ice"
+    "canAct": true,
+    "skipTurnChance": 30
+  },
+  "freeze": {
+    "name": "Freeze",
+    "emoji": "❄️",
+    "type": "ailment",
+    "turnDuration": 3,
+    "chance": 35,
+    "resistStat": "vitality",
+    "description": "Unable to act. Melts when hit by fire.",
+    "battleEffect": {
+      "magicMultiplier": 1.0,
+      "strengthMultiplier": 1.0,
+      "accuracyMultiplier": 0,
+      "evasionMultiplier": 0.5
     },
-    "brainwash": {
-      "name": "Brainwash",
-      "emoji": "🧠",
-      "type": "ailment",
-      "turnDuration": 3,
-      "chance": 25,
-      "resistStat": "magic",
-      "description": "May heal enemies instead of attacking them.",
-      "battleEffect": {
-        "magicMultiplier": 1.0,
-        "strengthMultiplier": 1.0,
-        "accuracyMultiplier": 0.8,
-        "evasionMultiplier": 0.8
-      },
-      "canAct": true,
-      "healEnemyChance": 50
+    "canAct": false,
+    "weakTo": "Fire"
+  },
+  "burn": {
+    "name": "Burn",
+    "emoji": "🔥",
+    "type": "ailment",
+    "turnDuration": 4,
+    "chance": 40,
+    "resistStat": "vitality",
+    "description": "Takes damage each turn and deals less physical damage.",
+    "turnEffect": {
+      "damagePercent": 0.08
     },
-    "tarukaja": {
-      "name": "Tarukaja",
-      "emoji": "💪",
-      "type": "buff",
-      "turnDuration": 4,
-      "description": "Increases attack power.",
-      "battleEffect": {
-        "strengthMultiplier": 1.3,
-        "magicMultiplier": 1.3
-      },
-      "stackable": true,
-      "maxStacks": 3
+    "battleEffect": {
+      "magicMultiplier": 1.0,
+      "strengthMultiplier": 0.7,
+      "accuracyMultiplier": 1.0,
+      "evasionMultiplier": 1.0
     },
-    "rakukaja": {
-      "name": "Rakukaja",
-      "emoji": "🛡️",
-      "type": "buff",
-      "turnDuration": 4,
-      "description": "Increases defense.",
-      "battleEffect": {
-        "defenseMultiplier": 1.3
-      },
-      "stackable": true,
-      "maxStacks": 3
+    "canAct": true,
+    "weakTo": "Ice"
+  },
+  "brainwash": {
+    "name": "Brainwash",
+    "emoji": "🧠",
+    "type": "ailment",
+    "chance": 50,
+    "resistStat": "magic",
+    "description": "May heal enemies instead of attacking them.",
+    "turnDuration": 3,
+    "battleEffect": {
+      "magicMultiplier": 1.0,
+      "strengthMultiplier": 1.0,
+      "accuracyMultiplier": 0.8,
+      "evasionMultiplier": 0.8
     },
-    "sukukaja": {
-      "name": "Sukukaja",
-      "emoji": "👁️",
-      "type": "buff",
-      "turnDuration": 4,
-      "description": "Increases accuracy and evasion.",
-      "battleEffect": {
-        "accuracyMultiplier": 1.3,
-        "evasionMultiplier": 1.3
-      },
-      "stackable": true,
-      "maxStacks": 3
+    "canAct": true,
+    "healEnemyChance": 50
+  },
+  "tarukaja": {
+    "name": "Tarukaja",
+    "emoji": "💪",
+    "type": "buff",
+    "turnDuration": 4,
+    "description": "Increases attack power.",
+    "battleEffect": {
+      "strengthMultiplier": 1.3,
+      "magicMultiplier": 1.3
     },
-    "heat_riser": {
-      "name": "Heat Riser",
-      "emoji": "🔥",
-      "type": "buff",
-      "turnDuration": 4,
-      "description": "Increases all stats.",
-      "battleEffect": {
-        "strengthMultiplier": 1.25,
-        "magicMultiplier": 1.25,
-        "defenseMultiplier": 1.25,
-        "accuracyMultiplier": 1.25,
-        "evasionMultiplier": 1.25
-      },
-      "stackable": false
+    "stackable": true,
+    "maxStacks": 3
+  },
+  "rakukaja": {
+    "name": "Rakukaja",
+    "emoji": "🛡️",
+    "type": "buff",
+    "turnDuration": 4,
+    "description": "Increases defense.",
+    "battleEffect": {
+      "defenseMultiplier": 1.3
     },
-    "tarunda": {
-      "name": "Tarunda",
-      "emoji": "💔",
-      "type": "debuff",
-      "turnDuration": 4,
-      "description": "Decreases attack power.",
-      "battleEffect": {
-        "strengthMultiplier": 0.7,
-        "magicMultiplier": 0.7
-      },
-      "stackable": true,
-      "maxStacks": 3
+    "stackable": true,
+    "maxStacks": 3
+  },
+  "sukukaja": {
+    "name": "Sukukaja",
+    "emoji": "👁️",
+    "type": "buff",
+    "turnDuration": 4,
+    "description": "Increases accuracy and evasion.",
+    "battleEffect": {
+      "accuracyMultiplier": 1.3,
+      "evasionMultiplier": 1.3
     },
-    "rakunda": {
-      "name": "Rakunda",
-      "emoji": "🔓",
-      "type": "debuff",
-      "turnDuration": 4,
-      "description": "Decreases defense.",
-      "battleEffect": {
-        "defenseMultiplier": 0.7
-      },
-      "stackable": true,
-      "maxStacks": 3
+    "stackable": true,
+    "maxStacks": 3
+  },
+  "heat_riser": {
+    "name": "Heat Riser",
+    "emoji": "🔥",
+    "type": "buff",
+    "turnDuration": 4,
+    "description": "Increases all stats.",
+    "battleEffect": {
+      "strengthMultiplier": 1.25,
+      "magicMultiplier": 1.25,
+      "defenseMultiplier": 1.25,
+      "accuracyMultiplier": 1.25,
+      "evasionMultiplier": 1.25
     },
-    "sukunda": {
-      "name": "Sukunda",
-      "emoji": "👎",
-      "type": "debuff",
-      "turnDuration": 4,
-      "description": "Decreases accuracy and evasion.",
-      "battleEffect": {
-        "accuracyMultiplier": 0.7,
-        "evasionMultiplier": 0.7
-      },
-      "stackable": true,
-      "maxStacks": 3
+    "stackable": false
+  },
+  "tarunda": {
+    "name": "Tarunda",
+    "emoji": "💔",
+    "type": "debuff",
+    "turnDuration": 4,
+    "description": "Decreases attack power.",
+    "battleEffect": {
+      "strengthMultiplier": 0.7,
+      "magicMultiplier": 0.7
     },
-    "debilitate": {
-      "name": "Debilitate",
-      "emoji": "⚰️",
-      "type": "debuff",
-      "turnDuration": 4,
-      "description": "Decreases all stats.",
-      "battleEffect": {
-        "strengthMultiplier": 0.75,
-        "magicMultiplier": 0.75,
-        "defenseMultiplier": 0.75,
-        "accuracyMultiplier": 0.75,
-        "evasionMultiplier": 0.75
-      },
-      "stackable": false
-    }
+    "stackable": true,
+    "maxStacks": 3
+  },
+  "rakunda": {
+    "name": "Rakunda",
+    "emoji": "🔓",
+    "type": "debuff",
+    "turnDuration": 4,
+    "description": "Decreases defense.",
+    "battleEffect": {
+      "defenseMultiplier": 0.7
+    },
+    "stackable": true,
+    "maxStacks": 3
+  },
+  "sukunda": {
+    "name": "Sukunda",
+    "emoji": "👎",
+    "type": "debuff",
+    "turnDuration": 4,
+    "description": "Decreases accuracy and evasion.",
+    "battleEffect": {
+      "accuracyMultiplier": 0.7,
+      "evasionMultiplier": 0.7
+    },
+    "stackable": true,
+    "maxStacks": 3
+  },
+  "debilitate": {
+    "name": "Debilitate",
+    "emoji": "⚰️",
+    "type": "debuff",
+    "turnDuration": 4,
+    "description": "Decreases all stats.",
+    "battleEffect": {
+      "strengthMultiplier": 0.75,
+      "magicMultiplier": 0.75,
+      "defenseMultiplier": 0.75,
+      "accuracyMultiplier": 0.75,
+      "evasionMultiplier": 0.75
+    },
+    "stackable": false
   }
+}

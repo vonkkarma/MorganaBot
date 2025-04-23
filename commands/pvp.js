@@ -1,5 +1,5 @@
 const fs = require('fs');
-const battleUtils = require('../utils/battleHandler');
+const BattleManager = require('../utils/BattleManager');
 const userDataPath = './userData.json';
 
 // Track channels currently in battle
@@ -62,61 +62,95 @@ module.exports = {
     activeBattles.add(channelId);
 
     try {
-      const playerDemon = await battleUtils.promptForDemonSelection(message, userId, userData[userId].caughtDemons, demons);
-      if (!playerDemon) return message.reply('Your demon selection was invalid. Battle canceled.');
-
-      await message.channel.send(`<@${opponentId}>, it's your turn to choose your demon!`);
-
-      const opponentDemon = await battleUtils.promptForDemonSelection(message, opponentId, userData[opponentId].caughtDemons, demons);
-      if (!opponentDemon) return message.reply('Opponent demon selection was invalid. Battle canceled.');
-
-      const battleData = {
-        player: {
-          ...playerDemon,
-          userId,
-          name: playerDemon.name,
-          maxHp: playerDemon.hp,
-          maxSp: playerDemon.sp,
-          hp: playerDemon.hp,
-          sp: playerDemon.sp,
-          isGuarding: false
-        },
-        enemy: {
-          ...opponentDemon,
-          userId: opponentId,
-          name: opponentDemon.name,
-          maxHp: opponentDemon.hp,
-          maxSp: opponentDemon.sp,
-          hp: opponentDemon.hp,
-          sp: opponentDemon.sp,
-          isGuarding: false
-        }
-      };
+      const battleData = await this._initializeBattle(message, userId, opponentId, userData, demons);
+      if (!battleData) {
+        activeBattles.delete(channelId);
+        return;
+      }
 
       await this.battleLoop(message, battleData, demons);
     } finally {
-      // Release channel lock
       activeBattles.delete(channelId);
+    }
+  },
+
+  async _initializeBattle(message, userId, opponentId, userData, demons) {
+    const playerDemon = await this._selectDemon(message, userId, userData[userId].caughtDemons, demons);
+    if (!playerDemon) {
+      await message.reply('Your demon selection was invalid. Battle canceled.');
+      return null;
+    }
+
+    await message.channel.send(`<@${opponentId}>, it's your turn to choose your demon!`);
+
+    const opponentDemon = await this._selectDemon(message, opponentId, userData[opponentId].caughtDemons, demons);
+    if (!opponentDemon) {
+      await message.reply('Opponent demon selection was invalid. Battle canceled.');
+      return null;
+    }
+
+    return {
+      player: {
+        ...playerDemon,
+        userId,
+        name: playerDemon.name,
+        maxHp: playerDemon.hp,
+        maxSp: playerDemon.sp,
+        hp: playerDemon.hp,
+        sp: playerDemon.sp,
+        isGuarding: false
+      },
+      enemy: {
+        ...opponentDemon,
+        userId: opponentId,
+        name: opponentDemon.name,
+        maxHp: opponentDemon.hp,
+        maxSp: opponentDemon.sp,
+        hp: opponentDemon.hp,
+        sp: opponentDemon.sp,
+        isGuarding: false
+      }
+    };
+  },
+
+  async _selectDemon(message, userId, caughtDemons, demons) {
+    await message.channel.send(
+      `<@${userId}>, choose your demon:\n` +
+      caughtDemons.map((d, i) => {
+        const demon = demons[d];
+        const level = demon?.level ?? '?';
+        return `${i + 1}. ${d} (Lv ${level})`;
+      }).join('\n')
+    );
+
+    try {
+      const collected = await message.channel.awaitMessages({
+        filter: m => m.author.id === userId && !isNaN(m.content) && 
+                     parseInt(m.content) > 0 && parseInt(m.content) <= caughtDemons.length,
+        max: 1,
+        time: 30000,
+        errors: ['time']
+      });
+
+      const index = parseInt(collected.first().content) - 1;
+      const selectedName = caughtDemons[index];
+      return demons[selectedName];
+    } catch (error) {
+      return null;
     }
   },
 
   async battleLoop(message, battleData, demons) {
     let turn = 'player';
-    const battleHandler = require('../utils/battleHandler');
+    const battleManager = new BattleManager(message, battleData, demons);
   
     while (battleData.player.hp > 0 && battleData.enemy.hp > 0) {
       const attacker = turn === 'player' ? battleData.player : battleData.enemy;
-      const defender = turn === 'player' ? battleData.enemy : battleData.player;
-  
+      
       // Reset guard state at the beginning of the turn
       attacker.isGuarding = false;
   
-      await battleHandler.displayBattleStatus(
-        message,
-        battleData.player,
-        battleData.enemy,
-        turn === 'player'
-      );
+      await battleManager.displayBattleStatus(turn === 'player');
   
       // Start the 30s timer
       const startTime = Date.now();
@@ -127,16 +161,12 @@ module.exports = {
         const elapsed = Date.now() - startTime;
         const remaining = TIMEOUT - elapsed;
   
-        // If time ran out, skip turn
         if (remaining <= 0) {
-          await message.channel.send(
-            `<@${attacker.userId}> didn't respond in time. Turn skipped.`
-          );
+          await message.channel.send(`<@${attacker.userId}> didn't respond in time. Turn skipped.`);
           break;
         }
   
         try {
-          // Wait only for the remaining time
           const collected = await message.channel.awaitMessages({
             filter: m => m.author.id === attacker.userId,
             max: 1,
@@ -144,43 +174,28 @@ module.exports = {
             errors: ['time']
           });
           
-          const input = collected.first().content.trim();
-          
-          // Process input using the new function
-          actionCompleted = await battleHandler.processMenuInput(
-            message,
-            input,
-            battleData,
-            demons,
-            turn === 'player' // isPlayerTurn
+          actionCompleted = await battleManager.processInput(
+            collected.first().content.trim(),
+            turn === 'player'
           );
           
         } catch (error) {
-          // awaitMessages timeout
-          await message.channel.send(
-            `<@${attacker.userId}> didn't respond in time. Turn skipped.`
-          );
+          await message.channel.send(`<@${attacker.userId}> didn't respond in time. Turn skipped.`);
           break;
         }
       }
   
-      // Switch turns
       turn = turn === 'player' ? 'enemy' : 'player';
     }
   
     // Reset menu state for both players
-    battleHandler.resetMenuState(battleData.player.userId);
-    battleHandler.resetMenuState(battleData.enemy.userId);
+    battleManager.resetMenuState(battleData.player.userId);
+    battleManager.resetMenuState(battleData.enemy.userId);
   
-    // Battle result
     if (battleData.player.hp <= 0) {
-      await message.channel.send(
-        `<@${battleData.player.userId}> was defeated by <@${battleData.enemy.userId}>!`
-      );
+      await message.channel.send(`<@${battleData.player.userId}> was defeated by <@${battleData.enemy.userId}>!`);
     } else {
-      await message.channel.send(
-        `<@${battleData.player.userId}> defeated <@${battleData.enemy.userId}>!`
-      );
+      await message.channel.send(`<@${battleData.player.userId}> defeated <@${battleData.enemy.userId}>!`);
     }
   }
 };

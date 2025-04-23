@@ -1,5 +1,5 @@
 const fs = require('fs');
-const battleUtils = require('../utils/battleHandler');
+const BattleManager = require('../utils/BattleManager');
 const userDataPath = './userData.json';
 
 module.exports = {
@@ -15,13 +15,18 @@ module.exports = {
       return message.reply("You don't have any caught demons.");
     }
 
-    const playerDemon = await battleUtils.promptForDemonSelection(message, userId, userData[userId].caughtDemons, demons);
+    const playerDemon = await this._selectDemon(message, userId, userData[userId].caughtDemons, demons);
     if (!playerDemon) return message.reply('Invalid choice. Battle canceled.');
 
     const enemyDemon = demons[Object.keys(demons)[Math.floor(Math.random() * Object.keys(demons).length)]];
     await message.channel.send(`A wild ${enemyDemon.name} appears!`);
 
-    const battleData = {
+    const battleData = this._initializeBattleData(playerDemon, enemyDemon, userId);
+    await this.battleLoop(message, battleData, demons);
+  },
+
+  _initializeBattleData(playerDemon, enemyDemon, userId) {
+    return {
       player: { 
         ...playerDemon, 
         name: playerDemon.name, 
@@ -29,7 +34,8 @@ module.exports = {
         hp: playerDemon.hp, 
         sp: playerDemon.sp, 
         maxSp: playerDemon.sp,
-        isGuarding: false
+        isGuarding: false,
+        userId
       },
       enemy: { 
         ...enemyDemon, 
@@ -41,40 +47,61 @@ module.exports = {
         isGuarding: false
       }
     };
+  },
 
-    await this.battleLoop(message, battleData, demons);
+  async _selectDemon(message, userId, caughtDemons, demons) {
+    await message.channel.send(
+      `<@${userId}>, choose your demon:\n` +
+      caughtDemons.map((d, i) => {
+        const demon = demons[d];
+        const level = demon?.level ?? '?';
+        return `${i + 1}. ${d} (Lv ${level})`;
+      }).join('\n')
+    );
+
+    try {
+      const collected = await message.channel.awaitMessages({
+        filter: m => m.author.id === userId && !isNaN(m.content) && 
+                     parseInt(m.content) > 0 && parseInt(m.content) <= caughtDemons.length,
+        max: 1,
+        time: 30000,
+        errors: ['time']
+      });
+
+      const index = parseInt(collected.first().content) - 1;
+      const selectedName = caughtDemons[index];
+      return demons[selectedName];
+    } catch (error) {
+      return null;
+    }
   },
 
   async battleLoop(message, battleData, demons) {
+    const battleManager = new BattleManager(message, battleData, demons);
     let turn = 'player';
-    const battleHandler = require('../utils/battleHandler');
   
     while (battleData.player.hp > 0 && battleData.enemy.hp > 0) {
       if (turn === 'player') {
         // Reset guard state at the beginning of the turn
         battleData.player.isGuarding = false;
         
-        await battleHandler.displayBattleStatus(message, battleData.player, battleData.enemy, true);
+        await battleManager.displayBattleStatus(true);
   
-        // Track if the action was completed
-        let actionCompleted = false;
-        
         // Start the 30s timer for the turn
         const startTime = Date.now();
         const TIMEOUT = 30000;
+        let actionCompleted = false;
         
         while (!actionCompleted) {
           const elapsed = Date.now() - startTime;
           const remaining = TIMEOUT - elapsed;
           
-          // If time ran out, skip the turn
           if (remaining <= 0) {
             await message.channel.send('No response. Turn skipped.');
             break;
           }
           
           try {
-            // Wait only for the remaining time
             const collected = await message.channel.awaitMessages({
               filter: m => m.author.id === message.author.id,
               max: 1,
@@ -82,15 +109,9 @@ module.exports = {
               errors: ['time']
             });
             
-            const input = collected.first().content.trim();
-            
-            // Process input using the new function
-            actionCompleted = await battleHandler.processMenuInput(
-              message, 
-              input, 
-              battleData, 
-              demons, 
-              true // isPlayerTurn
+            actionCompleted = await battleManager.processInput(
+              collected.first().content.trim(),
+              true
             );
             
           } catch (error) {
@@ -101,18 +122,13 @@ module.exports = {
   
         turn = 'enemy';
       } else {
-        // Reset the enemy's guard state at the beginning of the turn
         battleData.enemy.isGuarding = false;
-        
-        // Enemy AI logic
-        await battleHandler.executeEnemyTurn(message, battleData, demons);
-  
+        await battleManager.executeEnemyTurn();
         turn = 'player';
       }
     }
   
-    // Reset the menu state when the battle ends
-    battleHandler.resetMenuState(message.author.id);
+    battleManager.resetMenuState(message.author.id);
   
     if (battleData.player.hp <= 0) {
       await message.channel.send(`You were defeated by ${battleData.enemy.name}. Better luck next time!`);
