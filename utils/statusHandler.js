@@ -1,8 +1,7 @@
-const fs = require('fs');
-const statusEffects = require('../statusEffects.json');
+const dataManager = require('./DataManager');
 
 // Helper function to check if a demon has a specific status effect
-function hasStatusEffect(demon, statusName) {
+async function hasStatusEffect(demon, statusName) {
   return demon.statusEffects &&
     demon.statusEffects.some(status =>
       status.name.toLowerCase() === statusName.toLowerCase() &&
@@ -11,7 +10,7 @@ function hasStatusEffect(demon, statusName) {
 }
 
 // Helper to get a status effect on a demon
-function getStatusEffect(demon, statusName) {
+async function getStatusEffect(demon, statusName) {
   if (!demon.statusEffects) return null;
   return demon.statusEffects.find(status =>
     status.name.toLowerCase() === statusName.toLowerCase() &&
@@ -20,9 +19,7 @@ function getStatusEffect(demon, statusName) {
 }
 
 // Add a status effect to a demon
-function addStatusEffect(demon, statusName, source = null) {
-
-
+async function addStatusEffect(demon, statusName, source = null) {
   if (!demon.statusEffects) {
     demon.statusEffects = [];
   }
@@ -33,13 +30,13 @@ function addStatusEffect(demon, statusName, source = null) {
   }
 
   // Get the status effect data
-  const effect = statusEffects[statusName];
+  const effect = await dataManager.getStatusEffect(statusName);
   if (!effect) {
     return { success: false, reason: 'invalid_status' };
   }
 
   // Check if demon already has this status effect
-  const existingEffect = getStatusEffect(demon, statusName);
+  const existingEffect = await getStatusEffect(demon, statusName);
 
   // Handle stacking logic
   if (existingEffect) {
@@ -68,6 +65,7 @@ function addStatusEffect(demon, statusName, source = null) {
   }
 
   // For ailments, check if the demon is already afflicted with another ailment
+  const statusEffects = await dataManager.getStatusEffects();
   if (effect.type === 'ailment' &&
     demon.statusEffects.some(s => statusEffects[s.name]?.type === 'ailment' && s.turnsRemaining > 0)) {
     return { success: false, reason: 'already_afflicted' };
@@ -97,8 +95,10 @@ function removeStatusEffect(demon, statusName) {
 }
 
 // Process status effects at the start of a turn
-function processStatusEffectsStart(demon, message) {
+async function processStatusEffectsStart(demon, message) {
   if (!demon.statusEffects || demon.statusEffects.length === 0) return true;
+
+  const statusEffects = await dataManager.getStatusEffects();
 
   // Check for ailments that prevent actions
   for (const status of demon.statusEffects) {
@@ -128,14 +128,17 @@ async function processStatusEffectsEnd(demon, message) {
   const demonName = demon.userId ? `<@${demon.userId}> (${demon.name})` : demon.name;
   let statusMessages = [];
   let expiredStatuses = [];
+  const statusEffects = await dataManager.getStatusEffects();
 
   // Apply turn-end effects and reduce durations
   for (const status of demon.statusEffects) {
+    const effect = statusEffects[status.name];
+
     // Process damage-over-time effects
     if (status.turnEffect && status.turnEffect.damagePercent) {
       const damage = Math.floor(demon.maxHp * status.turnEffect.damagePercent);
       demon.hp = Math.max(1, demon.hp - damage); // Don't kill with status damage
-      statusMessages.push(`${demonName} takes ${damage} damage from ${status.emoji} ${status.name}!`);
+      statusMessages.push(`${demonName} takes ${damage} damage from ${effect.emoji} ${effect.name}!`);
     }
 
     // Decrease turn counter
@@ -168,11 +171,12 @@ async function processStatusEffectsEnd(demon, message) {
 // Handle applying an ailment or buff from a skill
 async function applyStatusFromSkill(attacker, target, move, message) {
   let statusApplied = false;
+  const statusEffects = await dataManager.getStatusEffects();
 
   // Check for ailment application
   if (move.ailment) {
     // Skip if target already has this status
-    if (hasStatusEffect(target, move.ailment)) {
+    if (await hasStatusEffect(target, move.ailment)) {
       const targetName = target.userId ? `<@${target.userId}> (${target.name})` : target.name;
       await message.channel.send(`${targetName} is already affected by ${statusEffects[move.ailment]?.name || move.ailment}!`);
     } else {
@@ -182,8 +186,9 @@ async function applyStatusFromSkill(attacker, target, move, message) {
         await message.channel.send(`${targetName} is immune to ${statusEffects[move.ailment]?.name || move.ailment}!`);
       } else {
         // Calculate chance based on stats
-        const resistStat = statusEffects[move.ailment]?.resistStat || 'vitality';
-        let baseChance = move.ailmentChance || statusEffects[move.ailment]?.chance || 40;
+        const effect = await dataManager.getStatusEffect(move.ailment);
+        const resistStat = effect?.resistStat || 'vitality';
+        let baseChance = move.ailmentChance || effect?.chance || 40;
 
         // Adjust chance based on target's resistance stat vs attacker's magic/strength
         const attackStat = move.usesMagic ? attacker.magic : attacker.strength;
@@ -205,7 +210,8 @@ async function applyStatusFromSkill(attacker, target, move, message) {
 
           if (result.success) {
             const targetName = target.userId ? `<@${target.userId}> (${target.name})` : target.name;
-            await message.channel.send(`${targetName} is afflicted with ${statusEffects[move.ailment].emoji || ''} ${statusEffects[move.ailment].name || move.ailment}!`);
+            const effect = await dataManager.getStatusEffect(move.ailment);
+            await message.channel.send(`${targetName} is afflicted with ${effect.emoji || ''} ${effect.name || move.ailment}!`);
             statusApplied = true;
           } else {
             if (result.reason === 'immune') {
@@ -229,7 +235,7 @@ async function applyStatusFromSkill(attacker, target, move, message) {
     const result = await addStatusEffect(attacker, move.buff, attacker.name);
 
     if (result.success) {
-      const effect = statusEffects[move.buff];
+      const effect = await dataManager.getStatusEffect(move.buff);
       const attackerName = attacker.userId ? `<@${attacker.userId}> (${attacker.name})` : attacker.name;
 
       if (result.stacked) {
@@ -248,7 +254,7 @@ async function applyStatusFromSkill(attacker, target, move, message) {
     const result = await addStatusEffect(target, move.debuff, attacker.name);
 
     if (result.success) {
-      const effect = statusEffects[move.debuff];
+      const effect = await dataManager.getStatusEffect(move.debuff);
       const targetName = target.userId ? `<@${target.userId}> (${target.name})` : target.name;
 
       if (result.stacked) {
@@ -310,7 +316,7 @@ async function checkInstakill(attacker, target, move, message) {
 }
 
 // Get effective multipliers from all active status effects
-function getStatusMultipliers(demon) {
+async function getStatusMultipliers(demon) {
   const multipliers = {
     strengthMultiplier: 1.0,
     magicMultiplier: 1.0,
@@ -325,14 +331,17 @@ function getStatusMultipliers(demon) {
     return multipliers;
   }
 
+  const statusEffects = await dataManager.getStatusEffects();
+
   // Combine all multipliers from active status effects
   for (const status of demon.statusEffects) {
-    if (!status.battleEffect) continue;
+    const effect = statusEffects[status.name];
+    if (!effect?.battleEffect) continue;
 
-    Object.keys(status.battleEffect).forEach(key => {
+    Object.keys(effect.battleEffect).forEach(key => {
       if (multipliers[key] !== undefined) {
         // For buff stacking, multiply rather than replace
-        multipliers[key] *= status.battleEffect[key];
+        multipliers[key] *= effect.battleEffect[key];
       }
     });
   }
@@ -341,21 +350,23 @@ function getStatusMultipliers(demon) {
 }
 
 // Handle breaking status effects when hit
-function handleStatusBreakOnDamage(demon, damageType = null) {
+async function handleStatusBreakOnDamage(demon, damageType = null) {
   if (!demon.statusEffects || demon.statusEffects.length === 0) return false;
 
   let effectsRemoved = [];
+  const statusEffects = await dataManager.getStatusEffects();
 
   // Check each status effect for break conditions
   demon.statusEffects = demon.statusEffects.filter(status => {
+    const effect = statusEffects[status.name];
     // Break on any damage
-    if (status.breakOnDamage) {
+    if (effect?.breakOnDamage) {
       effectsRemoved.push(status.name);
       return false;
     }
 
     // Break on specific damage type
-    if (status.weakTo && status.weakTo === damageType) {
+    if (effect?.weakTo && effect.weakTo === damageType) {
       effectsRemoved.push(status.name);
       return false;
     }

@@ -1,4 +1,4 @@
-const moves = require('../moves.json');
+const dataManager = require('./DataManager');
 const statusHandler = require('./statusHandler');
 const damageCalculator = require('./damageCalculator');
 
@@ -8,9 +8,17 @@ class BattleManager {
         this.battleData = battleData;
         this.demons = demons;
         this.menuState = new Map();
+        this.moves = null;
+        this.statusEffects = null;
+    }
+
+    async initialize() {
+        this.moves = await dataManager.getMoves();
+        this.statusEffects = await dataManager.getStatusEffects();
     }
 
     async displayBattleStatus(isPlayerTurn = true) {
+        if (!this.moves) await this.initialize();
         const attacker = isPlayerTurn ? this.battleData.player : this.battleData.enemy;
         const player = this.battleData.player;
         const enemy = this.battleData.enemy;
@@ -53,7 +61,7 @@ class BattleManager {
             return `\nChoose an action:\n1 - 🗡️ Attack\n2 - 📜 Skills\n3 - 🛡️ Guard\n\nType the number of your choice.`;
         } else if (menuState.currentMenu === 'skills') {
             return `\nChoose a skill:\n${entity.abilities.map((name, i) => {
-                const move = moves[name];
+                const move = this.moves[name];
                 return move
                     ? `${i + 1}. ${move.emoji} ${name} — ${move.type} (${move.sp} SP) \n _${move.desc}_\n`
                     : `${i + 1}. ${name} (Unknown Move)`;
@@ -119,7 +127,7 @@ class BattleManager {
     }
 
     async executeBasicAttack(attacker, defender) {
-        if (!statusHandler.processStatusEffectsStart(attacker, this.message)) {
+        if (!await statusHandler.processStatusEffectsStart(attacker, this.message)) {
             return true;
         }
 
@@ -149,6 +157,10 @@ class BattleManager {
     }
 
     async executeGuard(attacker) {
+        if (!await statusHandler.processStatusEffectsStart(attacker, this.message)) {
+            return true;
+        }
+
         damageCalculator.guardAction(attacker);
         const attackerText = this._getEntityText(attacker);
         await this.message.channel.send(`${attackerText} assumes a defensive stance! 🛡️`);
@@ -157,7 +169,8 @@ class BattleManager {
     }
 
     async executeAbility(attacker, defender, ability) {
-        const move = moves[ability.name];
+        if (!this.moves) await this.initialize();
+        const move = this.moves[ability.name];
         if (!move) return false;
 
         if (!statusHandler.processStatusEffectsStart(attacker, this.message)) {
@@ -187,8 +200,8 @@ class BattleManager {
     }
 
     async _executeAttack(attacker, defender, move) {
-        const attackerMods = statusHandler.getStatusMultipliers(attacker);
-        const defenderMods = statusHandler.getStatusMultipliers(defender);
+        const attackerMods = await statusHandler.getStatusMultipliers(attacker);
+        const defenderMods = await statusHandler.getStatusMultipliers(defender);
 
         const accuracy = move.accuracy * 
             (attackerMods.accuracyMultiplier ?? 1.0) / 
@@ -205,7 +218,7 @@ class BattleManager {
             isGuarding: defender.isGuarding || false
         };
 
-        let damage = damageCalculator.calculateDamage(attacker, defender, move, context);
+        let damage = await damageCalculator.calculateDamage(attacker, defender, move, context);
 
         if (Math.random() < 0.1) {
             damage = Math.floor(damage * 1.5);
@@ -221,14 +234,14 @@ class BattleManager {
     }
 
     async _handleTargetRedirection(attacker, defender, move) {
-        if (!damageCalculator.shouldTargetAlly(attacker) || move.type === 'Healing') {
+        if (!await damageCalculator.shouldTargetAlly(attacker) || move.type === 'Healing') {
             return false;
         }
 
         const attackerText = this._getEntityText(attacker);
         const defenderText = this._getEntityText(defender);
 
-        if (statusHandler.hasStatusEffect(attacker, 'charm')) {
+        if (await statusHandler.hasStatusEffect(attacker, 'charm')) {
             await this.message.channel.send(`${attackerText} is charmed 💘 and attacks an ally instead!`);
             return true;
         } else if (attacker.statusEffects?.some(effect => effect.name.toLowerCase() === 'brainwash')) {
@@ -251,6 +264,7 @@ class BattleManager {
     }
 
     async _executeHealingMove(attacker, move, attackerText) {
+        if (!this.moves) await this.initialize();
         const maxHp = this.demons[attacker.name]?.hp || attacker.maxHp;
         const baseHeal = move.power;
         const percentHeal = Math.floor(maxHp * (move.healingPercent || 0));
@@ -315,16 +329,17 @@ class BattleManager {
     }
 
     async executeEnemyTurn() {
+        if (!this.moves) await this.initialize();
         const enemy = this.battleData.enemy;
         const player = this.battleData.player;
 
-        if (!statusHandler.processStatusEffectsStart(enemy, this.message)) {
+        if (!await statusHandler.processStatusEffectsStart(enemy, this.message)) {
             await statusHandler.processStatusEffectsEnd(enemy, this.message);
             return;
         }
 
         const healingMove = enemy.abilities.find(name => {
-            const move = moves[name];
+            const move = this.moves[name];
             return move && move.type === 'Healing' && enemy.sp >= move.sp;
         });
 
@@ -336,7 +351,7 @@ class BattleManager {
         }
         else {
             const statusMoves = enemy.abilities.filter(name => {
-                const move = moves[name];
+                const move = this.moves[name];
                 return move &&
                     enemy.sp >= move.sp &&
                     (move.ailment || move.debuff);
@@ -350,7 +365,7 @@ class BattleManager {
                 await this.executeAbility(enemy, player, { name: statusMove });
             } else {
                 const usableAbilities = enemy.abilities.filter(name => {
-                    const move = moves[name];
+                    const move = this.moves[name];
                     return move && enemy.sp >= move.sp && move.type !== 'Healing';
                 });
 

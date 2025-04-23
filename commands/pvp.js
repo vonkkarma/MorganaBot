@@ -1,6 +1,5 @@
-const fs = require('fs');
+const dataManager = require('../utils/DataManager');
 const BattleManager = require('../utils/BattleManager');
-const userDataPath = './userData.json';
 
 // Track channels currently in battle
 const activeBattles = new Set();
@@ -8,7 +7,7 @@ const activeBattles = new Set();
 module.exports = {
   name: 'pvp',
   description: 'Fight against another player!',
-  async execute(message, args, demons) {
+  async execute(message, args) {
     const channelId = message.channel.id;
 
     if (activeBattles.has(channelId)) {
@@ -28,15 +27,14 @@ module.exports = {
       return message.reply("This isn't Persona 4! You can't fight yourself.");
     }
 
-    const userData = fs.existsSync(userDataPath)
-      ? JSON.parse(fs.readFileSync(userDataPath))
-      : {};
+    const userDemons = await dataManager.getUserDemons(userId);
+    const opponentDemons = await dataManager.getUserDemons(opponentId);
 
-    if (!userData[userId]?.caughtDemons?.length) {
+    if (!userDemons.length) {
       return message.reply("You don't have any caught demons.");
     }
 
-    if (!userData[opponentId]?.caughtDemons?.length) {
+    if (!opponentDemons.length) {
       return message.reply(`${opponent.username} doesn't have any caught demons.`);
     }
 
@@ -62,20 +60,20 @@ module.exports = {
     activeBattles.add(channelId);
 
     try {
-      const battleData = await this._initializeBattle(message, userId, opponentId, userData, demons);
+      const battleData = await this._initializeBattle(message, userId, opponentId);
       if (!battleData) {
         activeBattles.delete(channelId);
         return;
       }
 
-      await this.battleLoop(message, battleData, demons);
+      await this.battleLoop(message, battleData);
     } finally {
       activeBattles.delete(channelId);
     }
   },
 
-  async _initializeBattle(message, userId, opponentId, userData, demons) {
-    const playerDemon = await this._selectDemon(message, userId, userData[userId].caughtDemons, demons);
+  async _initializeBattle(message, userId, opponentId) {
+    const playerDemon = await this._selectDemon(message, userId);
     if (!playerDemon) {
       await message.reply('Your demon selection was invalid. Battle canceled.');
       return null;
@@ -83,7 +81,7 @@ module.exports = {
 
     await message.channel.send(`<@${opponentId}>, it's your turn to choose your demon!`);
 
-    const opponentDemon = await this._selectDemon(message, opponentId, userData[opponentId].caughtDemons, demons);
+    const opponentDemon = await this._selectDemon(message, opponentId);
     if (!opponentDemon) {
       await message.reply('Opponent demon selection was invalid. Battle canceled.');
       return null;
@@ -113,10 +111,13 @@ module.exports = {
     };
   },
 
-  async _selectDemon(message, userId, caughtDemons, demons) {
+  async _selectDemon(message, userId) {
+    const userDemons = await dataManager.getUserDemons(userId);
+    const demons = await dataManager.getDemons();
+
     await message.channel.send(
       `<@${userId}>, choose your demon:\n` +
-      caughtDemons.map((d, i) => {
+      userDemons.map((d, i) => {
         const demon = demons[d];
         const level = demon?.level ?? '?';
         return `${i + 1}. ${d} (Lv ${level})`;
@@ -126,33 +127,31 @@ module.exports = {
     try {
       const collected = await message.channel.awaitMessages({
         filter: m => m.author.id === userId && !isNaN(m.content) && 
-                     parseInt(m.content) > 0 && parseInt(m.content) <= caughtDemons.length,
+                     parseInt(m.content) > 0 && parseInt(m.content) <= userDemons.length,
         max: 1,
         time: 30000,
         errors: ['time']
       });
 
       const index = parseInt(collected.first().content) - 1;
-      const selectedName = caughtDemons[index];
+      const selectedName = userDemons[index];
       return demons[selectedName];
     } catch (error) {
       return null;
     }
   },
 
-  async battleLoop(message, battleData, demons) {
+  async battleLoop(message, battleData) {
     let turn = 'player';
+    const demons = await dataManager.getDemons();
     const battleManager = new BattleManager(message, battleData, demons);
   
-    while (battleData.player.hp > 0 && battleData.enemy.hp > 0) {
+    while (true) {
       const attacker = turn === 'player' ? battleData.player : battleData.enemy;
       
-      // Reset guard state at the beginning of the turn
       attacker.isGuarding = false;
-  
       await battleManager.displayBattleStatus(turn === 'player');
   
-      // Start the 30s timer
       const startTime = Date.now();
       const TIMEOUT = 30000;
       let actionCompleted = false;
@@ -184,11 +183,15 @@ module.exports = {
           break;
         }
       }
+      
+      // Check victory after the turn is fully processed
+      if (battleData.player.hp <= 0 || battleData.enemy.hp <= 0) {
+        break;
+      }
   
       turn = turn === 'player' ? 'enemy' : 'player';
     }
   
-    // Reset menu state for both players
     battleManager.resetMenuState(battleData.player.userId);
     battleManager.resetMenuState(battleData.enemy.userId);
   

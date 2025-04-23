@@ -1,14 +1,15 @@
-const moves = require('../moves.json'); // adjust the path as needed
+const dataManager = require('../utils/DataManager');
 
 module.exports = {
   name: 'demon',
   description: 'Get details about a demon',
-  async execute(message, args, demons) {
+  async execute(message, args) {
     if (!args.length) {
       return message.reply('Please specify a demon name.');
     }
 
     const demonName = args.join(' ').toLowerCase();
+    const demons = await dataManager.getDemons();
     const demonKey = Object.keys(demons).find(key => key.toLowerCase() === demonName);
 
     if (!demonKey) {
@@ -16,6 +17,7 @@ module.exports = {
     }
 
     const demonInfo = demons[demonKey];
+    const moves = await dataManager.getMoves();
 
     const abilitiesText = demonInfo.abilities.map(name => {
       const move = moves[name];

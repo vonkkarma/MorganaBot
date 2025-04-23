@@ -1,6 +1,6 @@
 const fs = require('fs');
+const dataManager = require('./DataManager');
 const statusHandler = require('./statusHandler');
-const statusEffects = require('../statusEffects.json');
 
 /**
  * Calculate level-based correction multiplier for damage
@@ -41,8 +41,8 @@ function guardAction(demon) {
  * @param {Object} demon - The demon to get modified stats for
  * @returns {Object} - Object containing stat multipliers
  */
-function getStatusEffectModifiers(demon) {
-  return statusHandler.getStatusMultipliers(demon);
+async function getStatusEffectModifiers(demon) {
+  return await statusHandler.getStatusMultipliers(demon);
 }
 
 /**
@@ -50,9 +50,7 @@ function getStatusEffectModifiers(demon) {
  * @param {Object} attacker - The attacking demon
  * @returns {boolean} - Whether the attacker should target allies
  */
-function shouldTargetAlly(attacker) {
-
-
+async function shouldTargetAlly(attacker) {
   // Direct array check for brainwash effect first
   const brainwashEffect = attacker.statusEffects?.find(effect =>
     effect.name.toLowerCase() === 'brainwash' &&
@@ -60,17 +58,18 @@ function shouldTargetAlly(attacker) {
   );
 
   if (brainwashEffect) {
-    // Use the healEnemyChance from the status effect
-    const healChance = brainwashEffect.healEnemyChance ?? 50; // Default to 50% if not specified
+    const effect = await dataManager.getStatusEffect('brainwash');
+    const healChance = effect?.healEnemyChance ?? 50;
     const roll = Math.random() * 100;
-
     return roll < healChance;
   }
 
   // Then check for charm
-  if (statusHandler.hasStatusEffect(attacker, 'charm')) {
-    const charmEffect = statusHandler.getStatusEffect(attacker, 'charm');
-    return Math.random() * 100 < (charmEffect?.targetAllyChance || 0);
+  const isCharmed = await statusHandler.hasStatusEffect(attacker, 'charm');
+  if (isCharmed) {
+    const charmEffect = await statusHandler.getStatusEffect(attacker, 'charm');
+    const targetAllyChance = charmEffect?.targetAllyChance || 60;
+    return Math.random() * 100 < targetAllyChance;
   }
 
   return false;
@@ -84,13 +83,13 @@ function shouldTargetAlly(attacker) {
  * @param {Object} context - Additional context for damage calculation
  * @returns {number} - The calculated damage
  */
-function calculateDamage(attacker, defender, skill, context = {}) {
+async function calculateDamage(attacker, defender, skill, context = {}) {
   const level = attacker.level;
   const root = (level <= 150) ? level + 10 : (level / 10 + 145);
 
   // Get status effect modifiers
-  const attackerModifiers = getStatusEffectModifiers(attacker);
-  const defenderModifiers = getStatusEffectModifiers(defender);
+  const attackerModifiers = await getStatusEffectModifiers(attacker);
+  const defenderModifiers = await getStatusEffectModifiers(defender);
 
   let stat = 0;
   if (skill.usesStrength) {
@@ -174,8 +173,13 @@ function calculateDamage(attacker, defender, skill, context = {}) {
   return Math.max(Math.floor(modified), 1);
 }
 
+/**
+ * Execute a basic attack
+ * @param {Object} attacker - The attacking demon
+ * @param {Object} defender - The defending demon
+ * @returns {number} - The calculated damage
+ */
 function basicAttack(attacker, defender) {
-  // Use standard 100 power physical attack logic
   const attackData = {
     name: "Attack",
     type: "Physical",
@@ -188,9 +192,14 @@ function basicAttack(attacker, defender) {
   return calculateDamage(attacker, defender, attackData);
 }
 
-// Check if demon should be affected by status effects that break on damage
-function checkStatusBreakOnDamage(demon, damageType) {
-  return statusHandler.handleStatusBreakOnDamage(demon, damageType);
+/**
+ * Check if status effects should break on damage
+ * @param {Object} demon - The demon to check
+ * @param {string} damageType - The type of damage dealt
+ * @returns {Array} - Array of broken status effect names
+ */
+async function checkStatusBreakOnDamage(demon, damageType) {
+  return await statusHandler.handleStatusBreakOnDamage(demon, damageType);
 }
 
 module.exports = {

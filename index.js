@@ -1,11 +1,8 @@
 const fs = require('fs');
 const { Client, GatewayIntentBits } = require('discord.js');
 const { token } = require('./config.json');
-const path = require('path'); 
-
-
-// Load the demon data
-let demons = JSON.parse(fs.readFileSync('demons.json'));
+const path = require('path');
+const dataManager = require('./utils/DataManager');
 
 // Create a new client instance
 const client = new Client({
@@ -36,6 +33,8 @@ client.on('messageCreate', async message => {
   if (!command) return;
 
   try {
+    // Pass only necessary data to commands
+    const demons = await dataManager.getDemons();
     await command.execute(message, args, demons);
   } catch (error) {
     console.error(error);
@@ -45,6 +44,17 @@ client.on('messageCreate', async message => {
 
 client.login(token);
 
-client.once('ready', () => {
+client.once('ready', async () => {
   console.log(`Logged in as ${client.user.tag}!`);
+  
+  // Initialize data on startup
+  try {
+    await dataManager.getDemons();
+    await dataManager.getMoves();
+    await dataManager.getStatusEffects();
+    await dataManager.getUserData();
+    console.log('Data initialization complete!');
+  } catch (error) {
+    console.error('Error initializing data:', error);
+  }
 });

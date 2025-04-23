@@ -1,28 +1,26 @@
-const fs = require('fs');
+const dataManager = require('../utils/DataManager');
 const BattleManager = require('../utils/BattleManager');
-const userDataPath = './userData.json';
 
 module.exports = {
   name: 'battle',
   description: 'Fight a random demon!',
-  async execute(message, args, demons) {
+  async execute(message, args) {
     const userId = message.author.id;
-    const userData = fs.existsSync(userDataPath)
-      ? JSON.parse(fs.readFileSync(userDataPath))
-      : {};
+    const userDemons = await dataManager.getUserDemons(userId);
 
-    if (!userData[userId]?.caughtDemons?.length) {
+    if (!userDemons.length) {
       return message.reply("You don't have any caught demons.");
     }
 
-    const playerDemon = await this._selectDemon(message, userId, userData[userId].caughtDemons, demons);
+    const playerDemon = await this._selectDemon(message, userId, userDemons);
     if (!playerDemon) return message.reply('Invalid choice. Battle canceled.');
 
+    const demons = await dataManager.getDemons();
     const enemyDemon = demons[Object.keys(demons)[Math.floor(Math.random() * Object.keys(demons).length)]];
     await message.channel.send(`A wild ${enemyDemon.name} appears!`);
 
     const battleData = this._initializeBattleData(playerDemon, enemyDemon, userId);
-    await this.battleLoop(message, battleData, demons);
+    await this.battleLoop(message, battleData);
   },
 
   _initializeBattleData(playerDemon, enemyDemon, userId) {
@@ -49,7 +47,8 @@ module.exports = {
     };
   },
 
-  async _selectDemon(message, userId, caughtDemons, demons) {
+  async _selectDemon(message, userId, caughtDemons) {
+    const demons = await dataManager.getDemons();
     await message.channel.send(
       `<@${userId}>, choose your demon:\n` +
       caughtDemons.map((d, i) => {
@@ -76,18 +75,15 @@ module.exports = {
     }
   },
 
-  async battleLoop(message, battleData, demons) {
-    const battleManager = new BattleManager(message, battleData, demons);
+  async battleLoop(message, battleData) {
     let turn = 'player';
+    const battleManager = new BattleManager(message, battleData, await dataManager.getDemons());
   
-    while (battleData.player.hp > 0 && battleData.enemy.hp > 0) {
+    while (true) {
       if (turn === 'player') {
-        // Reset guard state at the beginning of the turn
         battleData.player.isGuarding = false;
-        
         await battleManager.displayBattleStatus(true);
   
-        // Start the 30s timer for the turn
         const startTime = Date.now();
         const TIMEOUT = 30000;
         let actionCompleted = false;
@@ -125,6 +121,11 @@ module.exports = {
         battleData.enemy.isGuarding = false;
         await battleManager.executeEnemyTurn();
         turn = 'player';
+      }
+
+      // Check victory after both status effects and actions are processed
+      if (battleData.player.hp <= 0 || battleData.enemy.hp <= 0) {
+        break;
       }
     }
   

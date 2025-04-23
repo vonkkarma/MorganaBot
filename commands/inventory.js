@@ -1,26 +1,17 @@
-const fs = require('fs');
-const userDataPath = './userData.json';
+const dataManager = require('../utils/DataManager');
 
 module.exports = {
   name: 'inventory',
   description: 'View your caught demons!',
-  async execute(message, args, demons) {
+  async execute(message, args) {
     const userId = message.author.id;
+    const userDemons = await dataManager.getUserDemons(userId);
 
-    // Load user data
-    let userData = {};
-    if (fs.existsSync(userDataPath)) {
-      userData = JSON.parse(fs.readFileSync(userDataPath));
-    }
-
-    // If the user has no caught demons
-    if (!userData[userId] || userData[userId].caughtDemons.length === 0) {
+    if (!userDemons.length) {
       return message.reply('You don\'t have any caught demons yet.');
     }
 
-    const caughtDemons = userData[userId].caughtDemons;
-    const uniqueDemons = [...new Set(caughtDemons)]; // Remove duplicates
-
+    const uniqueDemons = [...new Set(userDemons)];
     const demonNames = uniqueDemons.join(', ');
 
     await message.reply(`You have caught the following demons: ${demonNames}`);
