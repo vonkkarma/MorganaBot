@@ -3,165 +3,11 @@ const moves = require('../moves.json');
 const { calculateDamage, guardAction, shouldTargetAlly, checkStatusBreakOnDamage, getStatusEffectModifiers } = require('./damageCalculator');
 const statusHandler = require('./statusHandler');
 
-// Track battle menu state for active users with automatic cleanup
-class BattleMenuManager {
-  constructor() {
-    this.states = {};
-    this.CLEANUP_INTERVAL = 1000 * 60 * 30; // 30 minutes
-    
-    // Setup periodic cleanup
-    setInterval(() => this.cleanupInactiveStates(), this.CLEANUP_INTERVAL);
-  }
-  
-  getState(userId) {
-    if (!this.states[userId]) {
-      this.states[userId] = {
-        currentMenu: 'main',
-        lastActivity: Date.now()
-      };
-    } else {
-      // Update last activity timestamp
-      this.states[userId].lastActivity = Date.now();
-    }
-    return this.states[userId];
-  }
-  
-  resetState(userId) {
-    if (this.states[userId]) {
-      this.states[userId].currentMenu = 'main';
-      this.states[userId].lastActivity = Date.now();
-    }
-  }
-  
-  cleanupInactiveStates() {
-    const currentTime = Date.now();
-    const expirationTime = 1000 * 60 * 60; // 1 hour
-    
-    Object.keys(this.states).forEach(userId => {
-      if (currentTime - this.states[userId].lastActivity > expirationTime) {
-        delete this.states[userId];
-      }
-    });
-  }
-}
+// Track battle menu state for all active users
+const battleMenuState = {};
 
-// Create a singleton instance
-const battleMenuManager = new BattleMenuManager();
-
-/**
- * Helper to format entity display text
- * @param {Object} entity - Player or enemy entity
- * @returns {String} Formatted display text
- */
-function getEntityDisplayText(entity) {
-  return entity.userId ? `<@${entity.userId}> (${entity.name})` : entity.name;
-}
-
-/**
- * Helper to process move execution outcomes
- * @param {Object} attacker - The attacking entity
- * @param {Object} move - The move being used
- * @param {String} message - The message to send
- * @returns {Boolean} Whether the move succeeded
- */
-async function processMoveOutcome(attacker, move, message) {
-  // Check SP cost
-  if (attacker.sp < move.sp) {
-    await message.channel.send(`${getEntityDisplayText(attacker)} doesn't have enough SP to use ${move.name}!`);
-    return false;
-  }
-  
-  // Deduct SP
-  attacker.sp -= move.sp;
-  return true;
-}
-
-/**
- * Apply damage and status effects 
- * @param {Object} attacker - The attacking entity
- * @param {Object} defender - The defending entity
- * @param {Number} damage - The damage amount
- * @param {Object} move - The move being used
- * @param {Object} message - Discord message object
- */
-async function applyDamageAndEffects(attacker, defender, damage, move, message) {
-  const attackerText = getEntityDisplayText(attacker);
-  const defenderText = getEntityDisplayText(defender);
-  
-  // Apply damage
-  defender.hp -= damage;
-  await message.channel.send(`${defenderText} takes ${damage} damage!`);
-  
-  // Check for broken status effects when hit
-  const brokenEffects = checkStatusBreakOnDamage(defender, move.type);
-  if (brokenEffects && brokenEffects.length > 0) {
-    for (const effect of brokenEffects) {
-      await message.channel.send(`${defenderText}'s ${effect} status was broken by the attack!`);
-    }
-  }
-  
-  // Check for instakill effects
-  if (move.instakill && defender.hp > 0) {
-    await statusHandler.checkInstakill(attacker, defender, move, message);
-  }
-  
-  // Check for status effect application from the move
-  if (defender.hp > 0) {
-    await statusHandler.applyStatusFromSkill(attacker, defender, move, message);
-  }
-}
-
-/**
- * Handle target redirection for charm/brainwash
- * @param {Object} attacker - The attacking entity
- * @param {Object} defender - The defending entity
- * @param {Object} move - The move being used
- * @param {Object} message - Discord message object
- * @returns {Boolean} Whether the attack was redirected
- */
-async function handleTargetRedirection(attacker, defender, move, message) {
-  const attackerText = getEntityDisplayText(attacker);
-  const defenderText = getEntityDisplayText(defender);
-  
-  // Check if attacker is affected by status that redirects targets
-  const redirectTarget = shouldTargetAlly(attacker);
-  if (!redirectTarget || (move.type === 'Healing')) {
-    return false;
-  }
-  
-  if (statusHandler.hasStatusEffect(attacker, 'charm')) {
-    await message.channel.send(`${attackerText} is charmed 💘 and attacks an ally instead!`);
-    // In a multiplayer scenario, you'd redirect to a different target here
-    return true;
-  } 
-  else if (statusHandler.hasStatusEffect(attacker, 'brainwash')) {
-    await message.channel.send(`${attackerText} is brainwashed 🧠 and attempts to heal the enemy!`);
-    // Use a consistent healing formula across all moves
-    const healAmount = Math.floor((move.power || attacker.strength) / 2);
-    defender.hp = Math.min(defender.hp + healAmount, defender.maxHp);
-    await message.channel.send(`${defenderText} recovers ${healAmount} HP!`);
-    return true;
-  }
-  
-  return false;
-}
-
-// Main battle handler module
-const battleHandler = {
-  /**
-   * Prompt user to select a demon
-   * @param {Object} message - Discord message object
-   * @param {String} userId - User ID
-   * @param {Array} caughtDemons - List of caught demons
-   * @param {Object} demons - Demons data
-   * @returns {Object|null} Selected demon or null
-   */
+module.exports = {
   async promptForDemonSelection(message, userId, caughtDemons, demons) {
-    if (!caughtDemons || caughtDemons.length === 0) {
-      await message.channel.send(`<@${userId}>, you don't have any demons to select.`);
-      return null;
-    }
-    
     await message.channel.send(
       `<@${userId}>, choose your demon:\n` +
       caughtDemons.map((d, i) => {
@@ -177,64 +23,61 @@ const battleHandler = {
       const index = parseInt(collected.first().content) - 1;
       
       if (isNaN(index) || index < 0 || index >= caughtDemons.length) {
-        await message.channel.send(`<@${userId}>, that's not a valid selection.`);
         return null;
       }
       
       const selectedName = caughtDemons[index];
       const demon = demons[selectedName];
-      if (!demon) {
-        await message.channel.send(`<@${userId}>, there was an error selecting that demon.`);
-        return null;
+      if (demon) {
+        return demon;
       }
-      
-      return demon;
     } catch (error) {
-      await message.channel.send(`<@${userId}>, you didn't make a selection in time.`);
       return null;
     }
+
+    return null;
   },
 
-  /**
-   * Execute a demon ability
-   * @param {Object} attacker - The attacking entity
-   * @param {Object} defender - The defending entity
-   * @param {Object} ability - The ability to use
-   * @param {Object} message - Discord message object
-   * @param {Object} demons - Demons data
-   * @param {String} attackerText - Display text for attacker
-   * @param {String} defenderText - Display text for defender
-   * @returns {Boolean} Whether the ability was executed successfully
-   */
   async executeAbility(attacker, defender, ability, message, demons, attackerText, defenderText) {
-    if (!ability || !ability.name) return false;
-    
+    if (!ability) return false;
     const move = moves[ability.name]; // Get the full move from moves.json
-    if (!move) {
-      await message.channel.send(`Unknown ability: ${ability.name}`);
-      return false;
-    }
+    if (!move) return false;
 
     // Check if attacker can act due to status effects
     if (!statusHandler.processStatusEffectsStart(attacker, message)) {
       return true; // Turn used, but couldn't act
     }
 
-    // Check SP and deduct it
-    if (!await processMoveOutcome(attacker, move, message)) {
+    // Check SP cost
+    if (attacker.sp < move.sp) {
+      await message.channel.send(`${attackerText} doesn't have enough SP to use ${ability.name}!`);
       return false;
     }
 
-    // Handle redirected targets (charm/brainwash)
-    if (await handleTargetRedirection(attacker, defender, move, message)) {
-      await statusHandler.processStatusEffectsEnd(attacker, message);
-      return true;
+    // Deduct SP
+    attacker.sp -= move.sp;
+
+    // Charm/Brainwash status effects can redirect targets
+    const redirectTarget = shouldTargetAlly(attacker);
+    if (redirectTarget && move.type !== 'Healing') {
+      if (statusHandler.hasStatusEffect(attacker, 'charm')) {
+        // For charm, target allies instead
+        await message.channel.send(`${attackerText} is charmed 💘 and attacks an ally instead!`);
+        // In a multiplayer scenario, you'd redirect to a different target here
+      } else if (statusHandler.hasStatusEffect(attacker, 'brainwash')) {
+        // For brainwash, heal enemies instead of attacking
+        await message.channel.send(`${attackerText} is brainwashed 🧠 and attempts to heal the enemy!`);
+        const healAmount = Math.floor(move.power / 2);
+        defender.hp = Math.min(defender.hp + healAmount, defender.maxHp);
+        await message.channel.send(`${defenderText} recovers ${healAmount} HP!`);
+        return true;
+      }
     }
 
     // Handle healing moves
     if (move.type === 'Healing') {
       const maxHp = demons[attacker.name]?.hp || attacker.maxHp;
-      const baseHeal = move.power || 0;
+      const baseHeal = move.power;
       const percentHeal = Math.floor(maxHp * (move.healingPercent || 0));
       const totalHeal = baseHeal + percentHeal;
     
@@ -252,14 +95,13 @@ const battleHandler = {
         }
       }
 
-      await statusHandler.processStatusEffectsEnd(attacker, message);
       return true;
     }
-    // Handle pure status/ailment moves
+    // Handle pure status/ailment moves WITH accuracy check
     else if (move.power === 0 || move.isPureStatus) {
       await message.channel.send(`${attackerText} uses ${move.emoji} ${ability.name}...`);
       
-      // Calculate accuracy with status effect modifiers
+      // Calculate accuracy with status effect modifiers - for status moves too!
       const attackerMods = getStatusEffectModifiers(attacker);
       const defenderMods = getStatusEffectModifiers(defender);
       
@@ -270,19 +112,16 @@ const battleHandler = {
       const roll = Math.random() * 100;
       if (roll > accuracy) {
         await message.channel.send(`... but it MISSES!`);
-        await statusHandler.processStatusEffectsEnd(attacker, message);
         return true;
       }
       
-      // Apply the status effect
+      // We hit - apply the status effect
       await statusHandler.applyStatusFromSkill(attacker, defender, move, message);
       
-      await statusHandler.processStatusEffectsEnd(attacker, message);
       return true;
     }
-    // Handle damage-dealing moves
     else {
-      const resist = defender.resistances || {};
+      const resist = defender.resistances;
 
       // Calculate accuracy with status effect modifiers
       const attackerMods = getStatusEffectModifiers(attacker);
@@ -295,7 +134,6 @@ const battleHandler = {
       const roll = Math.random() * 100;
       if (roll > accuracy) {
         await message.channel.send(`${attackerText} uses ${move.emoji} ${ability.name}... but it MISSES!`);
-        await statusHandler.processStatusEffectsEnd(attacker, message);
         return true;
       }
     
@@ -315,7 +153,6 @@ const battleHandler = {
       const isDrain = resist?.drain?.includes(move.type);
       const isRepel = resist?.repel?.includes(move.type);
       
-      // Handle different resistance types
       if (isWeak) {
         efficacy = 1.25; // baseline SMT V multiplier
         baseDamage = Math.floor(baseDamage * efficacy);
@@ -328,20 +165,17 @@ const battleHandler = {
       }
       else if (isNull) {
         await message.channel.send(`${attackerText} uses ${move.emoji} ${ability.name}... but it has no effect! ❌`);
-        await statusHandler.processStatusEffectsEnd(attacker, message);
         return true;
       }
       else if (isDrain) {
         const healedAmount = Math.max(0, Math.floor(baseDamage));
         defender.hp = Math.min(defender.maxHp, defender.hp + healedAmount);
         await message.channel.send(`${attackerText} uses ${move.emoji} ${ability.name}... but it's drained! ${defenderText} heals ${healedAmount} HP! 💉`);
-        await statusHandler.processStatusEffectsEnd(attacker, message);
         return true;
       }
       else if (isRepel) {
         attacker.hp -= baseDamage;
         await message.channel.send(`${attackerText} uses ${move.emoji} ${ability.name}... it's reflected! ${attackerText} takes ${baseDamage} damage! 🔁`);
-        await statusHandler.processStatusEffectsEnd(attacker, message);
         return true;
       }
       else {
@@ -349,7 +183,6 @@ const battleHandler = {
         await message.channel.send(`${attackerText} uses ${move.emoji} ${ability.name}...`);
       }
 
-      // Apply critical hit
       const critChance = move.crit ?? 0.1;
       const isCrit = Math.random() < critChance;
 
@@ -358,49 +191,68 @@ const battleHandler = {
         await message.channel.send(`Critical hit! 💥`);
       }
       
-      // Apply damage and effects
-      await applyDamageAndEffects(attacker, defender, baseDamage, move, message);
+      // Apply damage
+      defender.hp -= baseDamage;
+      await message.channel.send(`${defenderText} takes ${baseDamage} damage!`);
       
-      await statusHandler.processStatusEffectsEnd(attacker, message);
+      // Check for broken status effects when hit
+      const brokenEffects = checkStatusBreakOnDamage(defender, move.type);
+      if (brokenEffects && brokenEffects.length > 0) {
+        for (const effect of brokenEffects) {
+          await message.channel.send(`${defenderText}'s ${effect} status was broken by the attack!`);
+        }
+      }
+      
+      // Check for instakill effects
+      if (move.instakill && defender.hp > 0) {
+        await statusHandler.checkInstakill(attacker, defender, move, message);
+      }
+      
+      // Check for status effect application from the move
+      if (defender.hp > 0) {
+        await statusHandler.applyStatusFromSkill(attacker, defender, move, message);
+      }
+      
       return true;
     }
   },
 
-  /**
-   * Execute guard action
-   * @param {Object} attacker - The entity guarding
-   * @param {Object} message - Discord message object
-   * @returns {Boolean} Whether guard was successful
-   */
+  // Proper implementation of guard action
   async executeGuard(attacker, message) {
     // Use the guardAction function from damageCalculator
     guardAction(attacker);
     
-    const attackerText = getEntityDisplayText(attacker);
+    const attackerText = attacker.userId ? `<@${attacker.userId}> (${attacker.name})` : attacker.name;
     await message.channel.send(`${attackerText} assumes a defensive stance! 🛡️ `);
     
-    await statusHandler.processStatusEffectsEnd(attacker, message);
     return true;
   },
 
-  /**
-   * Execute basic attack
-   * @param {Object} attacker - The attacking entity
-   * @param {Object} defender - The defending entity 
-   * @param {Object} message - Discord message object
-   * @param {Object} demons - Demons data
-   * @param {String} attackerText - Display text for attacker
-   * @param {String} defenderText - Display text for defender
-   * @returns {Boolean} Whether the attack was successful
-   */
+  // Basic attack implementation
   async executeBasicAttack(attacker, defender, message, demons, attackerText, defenderText) {
     // Check if attacker can act due to status effects
     if (!statusHandler.processStatusEffectsStart(attacker, message)) {
-      await statusHandler.processStatusEffectsEnd(attacker, message);
       return true; // Turn used, but couldn't act
     }
 
-    // Create a basic attack move definition
+    // Charm/Brainwash status effects can redirect targets
+    const redirectTarget = shouldTargetAlly(attacker);
+    if (redirectTarget) {
+      if (statusHandler.hasStatusEffect(attacker, 'charm')) {
+        // For charm, target allies instead
+        await message.channel.send(`${attackerText} is charmed 💘 and attacks an ally instead!`);
+        // In a multiplayer scenario, you'd redirect to a different target here
+      } else if (statusHandler.hasStatusEffect(attacker, 'brainwash')) {
+        // For brainwash, heal enemies instead of attacking
+        await message.channel.send(`${attackerText} is brainwashed 🧠 and attempts to heal the enemy!`);
+        const healAmount = Math.floor(attacker.strength / 2);
+        defender.hp = Math.min(defender.hp + healAmount, defender.maxHp);
+        await message.channel.send(`${defenderText} recovers ${healAmount} HP!`);
+        return true;
+      }
+    }
+  
+    // Create a basic attack move
     const basicAttackMove = {
       name: "Attack",
       type: "Physical", 
@@ -413,12 +265,6 @@ const battleHandler = {
       desc: "Basic physical attack."
     };
 
-    // Handle redirected targets from status effects
-    if (await handleTargetRedirection(attacker, defender, basicAttackMove, message)) {
-      await statusHandler.processStatusEffectsEnd(attacker, message);
-      return true;
-    }
-
     // Calculate accuracy with status effect modifiers
     const attackerMods = getStatusEffectModifiers(attacker);
     const defenderMods = getStatusEffectModifiers(defender);
@@ -430,11 +276,9 @@ const battleHandler = {
     const roll = Math.random() * 100;
     if (roll > accuracy) {
       await message.channel.send(`${attackerText} attacks... but it MISSES!`);
-      await statusHandler.processStatusEffectsEnd(attacker, message);
       return true;
     }
 
-    // Calculate damage context
     let context = {
       attackStageMultiplier: attackerMods.strengthMultiplier || 1,
       defenseStageMultiplier: defenderMods.defenseMultiplier || 1,
@@ -452,61 +296,48 @@ const battleHandler = {
       await message.channel.send(`Critical hit! 💥`);
     }
     
-    await message.channel.send(`${attackerText} attacks...`);
+    // Apply damage
+    defender.hp -= baseDamage;
     
-    // Apply damage and effects
-    await applyDamageAndEffects(attacker, defender, baseDamage, basicAttackMove, message);
+    await message.channel.send(`${attackerText} attacks and deals ${baseDamage} damage!`);
     
-    await statusHandler.processStatusEffectsEnd(attacker, message);
+    // Check for broken status effects when hit
+    const brokenEffects = checkStatusBreakOnDamage(defender, "Physical");
+    if (brokenEffects && brokenEffects.length > 0) {
+      for (const effect of brokenEffects) {
+        await message.channel.send(`${defenderText}'s ${effect} status was broken by the attack!`);
+      }
+    }
+    
     return true;
   },
 
-  /**
-   * Execute AI turn for enemy
-   * @param {Object} message - Discord message object
-   * @param {Object} battleData - Battle data
-   * @param {Object} demons - Demons data
-   */
+  // AI logic for enemy turn
   async executeEnemyTurn(message, battleData, demons) {
     const enemy = battleData.enemy;
     const player = battleData.player;
     
     // Check if enemy can act due to status effects
     if (!statusHandler.processStatusEffectsStart(enemy, message)) {
+      // Process end-of-turn status effects
       await statusHandler.processStatusEffectsEnd(enemy, message);
       return; // Turn used, but couldn't act
     }
     
-    // Cache move data for enemy's abilities to improve efficiency
-    const enemyMoves = enemy.abilities.map(name => ({
-      name,
-      move: moves[name]
-    })).filter(item => item.move !== undefined);
+    // Simple AI logic - prioritize healing at low health, 
+    // guard occasionally, and otherwise use best attack
     
-    // AI Strategy: Find healing moves
-    const healingMoves = enemyMoves.filter(item => 
-      item.move.type === 'Healing' && enemy.sp >= item.move.sp
-    );
-    
-    // AI Strategy: Find status moves
-    const statusMoves = enemyMoves.filter(item => 
-      (item.move.ailment || item.move.debuff) && enemy.sp >= item.move.sp
-    );
-    
-    // AI Strategy: Find offensive moves
-    const offensiveMoves = enemyMoves.filter(item => 
-      item.move.type !== 'Healing' && item.move.power > 0 && enemy.sp >= item.move.sp
-    );
-    
-    // Decision making
+    const healingMove = enemy.abilities.find(name => {
+      const move = moves[name];
+      return move && move.type === 'Healing' && enemy.sp >= move.sp;
+    });
     
     // If HP is below 30% and we have a healing move, use it
-    if (enemy.hp < enemy.maxHp * 0.3 && healingMoves.length > 0) {
-      const healingMove = healingMoves[Math.floor(Math.random() * healingMoves.length)];
+    if (enemy.hp < enemy.maxHp * 0.3 && healingMove) {
       await this.executeAbility(
         enemy, 
         player, 
-        { name: healingMove.name }, 
+        { name: healingMove }, 
         message, 
         demons, 
         enemy.name, 
@@ -517,119 +348,127 @@ const battleHandler = {
     else if (Math.random() < 0.15) {
       await this.executeGuard(enemy, message);
     }
-    // Try to use a status effect move if target doesn't have one (40% chance)
+    // Try to use a status effect move if target doesn't have one
     else {
+      const statusMoves = enemy.abilities.filter(name => {
+        const move = moves[name];
+        return move && 
+               enemy.sp >= move.sp && 
+               (move.ailment || move.debuff);
+      });
+      
       const hasNoAilment = !player.statusEffects || 
                           !player.statusEffects.some(s => s.type === 'ailment');
                           
       if (hasNoAilment && statusMoves.length > 0 && Math.random() < 0.4) {
+        // 40% chance to try a status move if player has no ailment
         const statusMove = statusMoves[Math.floor(Math.random() * statusMoves.length)];
         await this.executeAbility(
           enemy, 
           player, 
-          { name: statusMove.name }, 
+          { name: statusMove }, 
           message, 
           demons, 
           enemy.name, 
           player.name
         );
       }
-      // Try to use an offensive ability if available
-      else if (offensiveMoves.length > 0) {
-        const offensiveMove = offensiveMoves[Math.floor(Math.random() * offensiveMoves.length)];
-        await this.executeAbility(
-          enemy, 
-          player, 
-          { name: offensiveMove.name }, 
-          message, 
-          demons, 
-          enemy.name, 
-          player.name
-        );
-      } 
-      // Fall back to basic attack
       else {
-        await this.executeBasicAttack(
-          enemy,
-          player,
-          message,
-          demons,
-          enemy.name,
-          player.name
-        );
+        // Try to use a random offensive ability if we have SP
+        const usableAbilities = enemy.abilities.filter(name => {
+          const move = moves[name];
+          return move && enemy.sp >= move.sp && move.type !== 'Healing';
+        });
+        
+        if (usableAbilities.length > 0) {
+          const abilityName = usableAbilities[Math.floor(Math.random() * usableAbilities.length)];
+          await this.executeAbility(
+            enemy, 
+            player, 
+            { name: abilityName }, 
+            message, 
+            demons, 
+            enemy.name, 
+            player.name
+          );
+        } else {
+          // Fall back to basic attack
+          await this.executeBasicAttack(
+            enemy,
+            player,
+            message,
+            demons,
+            enemy.name,
+            player.name
+          );
+        }
       }
     }
+    
+    // Process end-of-turn status effects
+    await statusHandler.processStatusEffectsEnd(enemy, message);
   },
 
-  /**
-   * Display battle status and menus
-   * @param {Object} message - Discord message object
-   * @param {Object} player - Player entity
-   * @param {Object} enemy - Enemy entity
-   * @param {Boolean} isPlayerTurn - Whether it's player's turn
-   */
   async displayBattleStatus(message, player, enemy, isPlayerTurn = true) {
     const attacker = isPlayerTurn ? player : enemy;
     const userId = attacker.userId;
     
-    // Create or update menu state for this user
-    const menuState = battleMenuManager.getState(userId);
+    if (!battleMenuState[userId]) {
+      battleMenuState[userId] = {
+        currentMenu: 'main', // 'main' or 'skills'
+      };
+    }
   
-    /**
-     * Helper to format entity status display
-     * @param {Object} entity - The entity to format
-     * @returns {String} Formatted status text
-     */
-    function formatEntityStatus(entity) {
-      const mention = entity.userId ? ` (<@${entity.userId}>)` : '';
-      
-      let status = `**${entity.name}** Lv${entity.level}${mention}\nHP: ${entity.hp} / ${entity.maxHp} | SP: ${entity.sp} / ${entity.maxSp}`;
-      
-      // Show guard status if active
-      if (entity.isGuarding) {
-        status += " 🛡️";
-      }
-      
-      // Show status effects
-      if (entity.statusEffects && entity.statusEffects.length > 0) {
-        status += " | Status: " + entity.statusEffects.map(s => 
-          `${s.emoji} ${s.name}${s.stacks > 1 ? ` x${s.stacks}` : ''} (${s.turnsRemaining})`
-        ).join(", ");
-      }
-      
-      return status;
+    const playerMention = player.userId ? ` (<@${player.userId}>)` : '';
+    const enemyMention = enemy.userId ? ` (<@${enemy.userId}>)` : '';
+    const attackerMention = attacker.userId ? `<@${attacker.userId}>` : attacker.name;
+  
+    let battleStatus = `**${player.name}** Lv${player.level}${playerMention}\nHP: ${player.hp} / ${player.maxHp} | SP: ${player.sp} / ${player.maxSp}`;
+    
+    // Show guard status if active
+    if (player.isGuarding) {
+      battleStatus += " 🛡️";
     }
     
-    const attackerMention = getEntityDisplayText(attacker);
-  
-    // Build status display
-    let battleStatus = formatEntityStatus(player);
-    battleStatus += `\n\n${formatEntityStatus(enemy)}`;
+    // Show status effects
+    if (player.statusEffects && player.statusEffects.length > 0) {
+      battleStatus += " | Status: " + player.statusEffects.map(s => 
+        `${s.emoji} ${s.name}${s.stacks > 1 ? ` x${s.stacks}` : ''} (${s.turnsRemaining})`
+      ).join(", ");
+    }
+    
+    battleStatus += `\n\n**${enemy.name}** Lv${enemy.level}${enemyMention}\nHP: ${enemy.hp} / ${enemy.maxHp} | SP: ${enemy.sp} / ${enemy.maxSp}`;
+    
+    if (enemy.isGuarding) {
+      battleStatus += " 🛡️";
+    }
+    
+    // Show status effects
+    if (enemy.statusEffects && enemy.statusEffects.length > 0) {
+      battleStatus += " | Status: " + enemy.statusEffects.map(s => 
+        `${s.emoji} ${s.name}${s.stacks > 1 ? ` x${s.stacks}` : ''} (${s.turnsRemaining})`
+      ).join(", ");
+    }
   
     if (isPlayerTurn !== null) {
       battleStatus += `\n\n${attackerMention}, it's your turn!`;
       
       // Display appropriate menu based on current state
-      if (menuState.currentMenu === 'main') {
+      if (battleMenuState[userId].currentMenu === 'main') {
         // Main menu
         battleStatus += `\nChoose an action:\n`;
         battleStatus += `1 - 🗡️ Attack\n`;
         battleStatus += `2 - 📜 Skills\n`;
         battleStatus += `3 - 🛡️ Guard\n`;
         battleStatus += `\nType the number of your choice.`;
-      } else if (menuState.currentMenu === 'skills') {
-        // Build skills submenu
-        battleStatus += `\nChoose a skill:\n`;
-        
-        // Map abilities to their move data for display
-        const abilitiesWithMoves = attacker.abilities.map((name, i) => {
+      } else if (battleMenuState[userId].currentMenu === 'skills') {
+        // Skills submenu
+        battleStatus += `\nChoose a skill:\n${attacker.abilities.map((name, i) => {
           const move = moves[name];
-          if (!move) return `${i + 1}. ${name} (Unknown Move)`;
-          
-          return `${i + 1}. ${move.emoji} ${name} — ${move.type} (${move.sp} SP) \n _${move.desc}_\n`;
-        });
-        
-        battleStatus += abilitiesWithMoves.join('\n');
+          return move
+            ? `${i + 1}. ${move.emoji} ${name} — ${move.type} (${move.sp} SP) \n _${move.desc}_\n`
+            : `${i + 1}. ${name} (Unknown Move)`;
+        }).join('\n')}`;
         battleStatus += `\n0 - ⬅️ Back to main menu`;
       }
     }
@@ -637,35 +476,34 @@ const battleHandler = {
     await message.channel.send(battleStatus);
   },
   
-  /**
-   * Process menu input from user
-   * @param {Object} message - Discord message object
-   * @param {String} input - User input
-   * @param {Object} battleData - Battle data
-   * @param {Object} demons - Demons data
-   * @param {Boolean} isPlayerTurn - Whether it's player's turn
-   * @returns {Boolean} Whether action was completed
-   */
+  // Process user input based on menu state
   async processMenuInput(message, input, battleData, demons, isPlayerTurn) {
     const attacker = isPlayerTurn ? battleData.player : battleData.enemy;
     const defender = isPlayerTurn ? battleData.enemy : battleData.player;
     const userId = attacker.userId;
     
-    // Get current menu state for this user
-    const menuState = battleMenuManager.getState(userId);
+    // Ensure battleMenuState for this user exists
+    if (!battleMenuState[userId]) {
+      battleMenuState[userId] = { currentMenu: 'main' };
+    }
+    
+    const menuState = battleMenuState[userId];
     const choice = parseInt(input);
     
     // Text references for messages
-    const attackerText = getEntityDisplayText(attacker);
-    const defenderText = getEntityDisplayText(defender);
+    const attackerText = attacker.userId ? `<@${attacker.userId}> (${attacker.name})` : attacker.name;
+    const defenderText = defender.userId ? `<@${defender.userId}> (${defender.name})` : defender.name;
     
     // Process input based on current menu
     if (menuState.currentMenu === 'main') {
       switch (choice) {
         case 1: // Attack
-          return await this.executeBasicAttack(
-            attacker, defender, message, demons, attackerText, defenderText
-          );
+          const result = await this.executeBasicAttack(attacker, defender, message, demons, attackerText, defenderText);
+          if (result) {
+            // Process end-of-turn status effects
+            await statusHandler.processStatusEffectsEnd(attacker, message);
+          }
+          return result;
           
         case 2: // Skills - change to submenu
           menuState.currentMenu = 'skills';
@@ -673,10 +511,14 @@ const battleHandler = {
           return false; // Action not complete, await new input
           
         case 3: // Guard
-          return await this.executeGuard(attacker, message);
+          const guardResult = await this.executeGuard(attacker, message);
+          if (guardResult) {
+            // Process end-of-turn status effects
+            await statusHandler.processStatusEffectsEnd(attacker, message);
+          }
+          return guardResult;
           
         default:
-          await message.channel.send(`Invalid choice. Please select a number from the menu.`);
           return false; // Action not complete, await new input
       }
     } 
@@ -692,40 +534,39 @@ const battleHandler = {
       const abilityIndex = choice - 1;
       if (abilityIndex >= 0 && abilityIndex < attacker.abilities.length) {
         const abilityName = attacker.abilities[abilityIndex];
-        const result = await this.executeAbility(
-          attacker, defender, { name: abilityName }, message, demons, attackerText, defenderText
-        );
+        const result = await this.executeAbility(attacker, defender, { name: abilityName }, message, demons, attackerText, defenderText);
+        menuState.currentMenu = 'main'; // Return to main menu after using ability
         
-        // Return to main menu after ability use attempt
-        menuState.currentMenu = 'main';
+        if (result) {
+          // Process end-of-turn status effects
+          await statusHandler.processStatusEffectsEnd(attacker, message);
+        }
         
         return result; // Action complete if ability was used successfully
       } else {
-        await message.channel.send(`Invalid skill selection. Please choose a number from the list.`);
         return false; // Action not complete, await new input
       }
     }
     
-    return false;
+    return false; 
   },
   
-  /**
-   * Reset menu state for a user
-   * @param {String} userId - User ID
-   */
+  // Reset menu state for a user
   resetMenuState(userId) {
-    battleMenuManager.resetState(userId);
+    if (battleMenuState[userId]) {
+      battleMenuState[userId].currentMenu = 'main';
+    }
   },
   
-  /**
-   * End turn and clean up
-   * @param {Object} demon - Entity ending turn
-   * @param {Object} message - Discord message object
-   */
+  // End turn function - resets guard and processes status effects
   async endTurn(demon, message) {
     // Reset guard status
     demon.isGuarding = false;
-  }
+    
+    // Process status effects at end of turn
+    await statusHandler.processStatusEffectsEnd(demon, message);
+  },
+  
+  // Export battleMenuState for use in other modules
+  battleMenuState
 };
-
-module.exports = battleHandler;
