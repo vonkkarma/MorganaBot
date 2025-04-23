@@ -37,7 +37,6 @@ function addStatusEffect(demon, statusName, source = null) {
   if (existingEffect) {
     if (effect.stackable && existingEffect.stacks < (effect.maxStacks || 1)) {
       existingEffect.stacks += 1;
-      existingEffect.turnsRemaining = effect.turnDuration;
       
       // Update multipliers based on stacks
       if (effect.battleEffect) {
@@ -50,10 +49,8 @@ function addStatusEffect(demon, statusName, source = null) {
         });
       }
       
-      return { success: true, status: existingEffect, stacked: true };
+      return { success: true, status: existingEffect, refreshed: true, stacked:true };
     } else if (!effect.stackable) {
-      // Just refresh the duration for non-stackable effects
-      existingEffect.turnsRemaining = effect.turnDuration;
       return { success: true, status: existingEffect, refreshed: true };
     }
     return { success: false, reason: 'max_stacks' };
@@ -68,9 +65,10 @@ function addStatusEffect(demon, statusName, source = null) {
   // Create a new status effect instance
   const newStatus = {
     name: statusName,
-    turnsRemaining: effect.turnDuration,
+    turnsRemaining: effect.turnDuration ?? 0,
     stacks: 1,
     source: source,
+    elapsedTurns: 0, // Track how many full turns the ailment has been active
     ...effect
   };
 
@@ -88,11 +86,90 @@ function removeStatusEffect(demon, statusName) {
   return demon.statusEffects.length < initialLength;
 }
 
-// Process status effects at the start of a turn
-function processStatusEffectsStart(demon, message) {
+// Calculate ailment recovery chance based on the new rules
+function calculateAilmentRecoveryChance(demon, ailment) {
+  // Get the coefficient value based on ailment type
+  let coefficient;
+  switch(ailment.name.toLowerCase()) {
+    case 'poison':
+    case 'sleep':
+      coefficient = 1;
+      break;
+    case 'confuse':
+    case 'charm':
+    case 'seal':
+    case 'mirage':
+    case 'mud':
+    case 'shroud':
+      coefficient = 15;
+      break;
+    default:
+      coefficient = 10; // Default value for other ailments
+  }
+  
+  // Calculate root value based on level
+  const root = 4 + (demon.level - 1) / 2;
+  
+  // Calculate base recovery chance
+  let base = coefficient * 10 / root;
+  
+  // Apply limits to base
+  base = Math.max(coefficient / 2, base); // No lower than half of coefficient
+  base = Math.min(85, base); // No higher than 85%
+  
+  // Calculate final recovery chance
+  const elapsedTurns = ailment.elapsedTurns || 0;
+  const recoveryChance = Math.floor(base + 15 * elapsedTurns);
+  
+  return Math.min(100, recoveryChance); // Cap at 100%
+}
+
+// Check if ailment should be recovered
+function checkAilmentRecovery(demon, ailment) {
+  // Check if elapsed turns meets minimum requirement
+  if (ailment.name.toLowerCase() === 'shroud' && ailment.elapsedTurns < 2) {
+    return false;
+  } else if (ailment.elapsedTurns < 1) {
+    return false;
+  }
+  
+  const recoveryChance = calculateAilmentRecoveryChance(demon, ailment);
+  const roll = Math.random() * 100;
+  
+  return roll < recoveryChance;
+}
+
+// Process status effects at the start of a turn - now includes ailment recovery check
+async function processStatusEffectsStart(demon, message) {
   if (!demon.statusEffects || demon.statusEffects.length === 0) return true;
   
-  // Check for ailments that prevent actions
+  // Process ailment recovery first
+  const ailments = demon.statusEffects.filter(status => status.type === 'ailment');
+  const recoveredAilments = [];
+  
+  // Check each ailment for recovery
+  for (const ailment of ailments) {
+    if (checkAilmentRecovery(demon, ailment)) {
+      recoveredAilments.push(ailment.name);
+    }
+  }
+  
+  // Remove recovered ailments
+  for (const ailmentName of recoveredAilments) {
+    removeStatusEffect(demon, ailmentName);
+    const effect = statusEffects[ailmentName];
+    if (effect) {
+      const demonName = demon.userId ? `<@${demon.userId}> (${demon.name})` : demon.name;
+      await message.channel.send(`${demonName} recovered from ${effect.emoji} ${effect.name}!`);
+    }
+  }
+  
+  // If any ailments were recovered, recheck remaining status effects
+  if (recoveredAilments.length > 0) {
+    demon.statusEffects = demon.statusEffects.filter(status => status.turnsRemaining > 0);
+  }
+  
+  // Check for remaining ailments that prevent actions
   for (const status of demon.statusEffects) {
     const effect = statusEffects[status.name];
     
@@ -121,8 +198,22 @@ async function processStatusEffectsEnd(demon, message) {
   let statusMessages = [];
   let expiredStatuses = [];
   
-  // Apply turn-end effects and reduce durations
+  // Process and increment elapsed turns for ailments
   for (const status of demon.statusEffects) {
+    if (status.type === 'ailment') {
+      status.elapsedTurns = (status.elapsedTurns || 0) + 1;
+      
+      // Check for second ailment recovery opportunity
+      if (checkAilmentRecovery(demon, status)) {
+        expiredStatuses.push(status.name);
+        const effect = statusEffects[status.name];
+        if (effect) {
+          statusMessages.push(`${demonName} recovered from ${effect.emoji} ${effect.name}!`);
+        }
+        continue;
+      }
+    }
+    
     // Process damage-over-time effects
     if (status.turnEffect && status.turnEffect.damagePercent) {
       const damage = Math.floor(demon.maxHp * status.turnEffect.damagePercent);
@@ -142,9 +233,11 @@ async function processStatusEffectsEnd(demon, message) {
   // Remove expired status effects
   for (const expiredStatus of expiredStatuses) {
     removeStatusEffect(demon, expiredStatus);
-    const effect = statusEffects[expiredStatus];
-    if (effect) {
-      statusMessages.push(`${effect.emoji} ${effect.name} has worn off from ${demonName}!`);
+    if (!statusMessages.some(msg => msg.includes(expiredStatus))) {
+      const effect = statusEffects[expiredStatus];
+      if (effect) {
+        statusMessages.push(`${effect.emoji} ${effect.name} has worn off from ${demonName}!`);
+      }
     }
   }
   
@@ -334,26 +427,38 @@ function getStatusMultipliers(demon) {
 
 // Handle breaking status effects when hit
 function handleStatusBreakOnDamage(demon, damageType = null) {
-  if (!demon.statusEffects || demon.statusEffects.length === 0) return false;
+  if (!demon.statusEffects || demon.statusEffects.length === 0) return [];
   
   let effectsRemoved = [];
   
   // Check each status effect for break conditions
-  demon.statusEffects = demon.statusEffects.filter(status => {
+  const updatedStatusEffects = [];
+  
+  for (const status of demon.statusEffects) {
+    let keepStatus = true;
+    
+    // Special case for sleep - always breaks on damage
+    if (status.name.toLowerCase() === 'sleep') {
+      effectsRemoved.push(status.name);
+      keepStatus = false;
+    }
     // Break on any damage
-    if (status.breakOnDamage) {
+    else if (status.breakOnDamage) {
       effectsRemoved.push(status.name);
-      return false;
+      keepStatus = false;
     }
-    
     // Break on specific damage type
-    if (status.weakTo && status.weakTo === damageType) {
+    else if (status.weakTo && status.weakTo === damageType) {
       effectsRemoved.push(status.name);
-      return false;
+      keepStatus = false;
     }
     
-    return true;
-  });
+    if (keepStatus) {
+      updatedStatusEffects.push(status);
+    }
+  }
+  
+  demon.statusEffects = updatedStatusEffects;
   
   return effectsRemoved;
 }
@@ -369,5 +474,6 @@ module.exports = {
   applyStatusFromSkill,
   checkInstakill,
   getStatusMultipliers,
-  handleStatusBreakOnDamage
+  handleStatusBreakOnDamage,
+  calculateAilmentRecoveryChance  // Export the new function for testing
 };
