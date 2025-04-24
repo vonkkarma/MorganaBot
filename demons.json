@@ -198,5 +198,25 @@
     "ailmentResist": [],
     "ailmentNull": []  
     }
-  }
+  },
+  "Pyro Jack": {
+    "name": "Pyro Jack",
+    "level": 20,
+    "hp": 90,
+    "sp": 153,
+    "strength": 14,
+    "magic": 29,
+    "vitality": 15,
+    "speed": 21,
+    "abilities": ["Agilao", "Tarunda"],
+    "resistances": {
+    "weak": ["Ice"],
+    "resist": [],
+    "null": [],
+    "drain": ["Ice","Confuse"],
+    "repel": [],
+    "ailmentResist": [],
+    "ailmentNull": []  
+    }
+   }
 }
