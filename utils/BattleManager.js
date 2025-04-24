@@ -333,64 +333,91 @@ class BattleManager {
         const attackerMods = await statusHandler.getStatusMultipliers(attacker);
         const defenderMods = await statusHandler.getStatusMultipliers(defender);
 
-        const accuracy = move.accuracy * 
-            (attackerMods.accuracyMultiplier ?? 1.0) / 
-            (defenderMods.evasionMultiplier ?? 1.0);
+        const hits = move.hits || 1;
+        let totalDamage = 0;
+        let anyHit = false;
+        for (let hit = 0; hit < hits; hit++) {
+            const accuracy = move.accuracy * 
+                (attackerMods.accuracyMultiplier ?? 1.0) / 
+                (defenderMods.evasionMultiplier ?? 1.0);
 
-        if (Math.random() * 100 > accuracy) {
-            await this.message.channel.send(`${this._getEntityText(attacker)} attacks... but it MISSES!`);
-            return false;
-        }
+            if (Math.random() * 100 > accuracy) {
+                await this.message.channel.send(`${this._getEntityText(attacker)}'s ${move.name} (hit ${hit+1})... MISSES!`);
+                continue;
+            }
 
-        const context = {
-            attackStageMultiplier: attackerMods.strengthMultiplier || 1,
-            defenseStageMultiplier: defenderMods.defenseMultiplier || 1,
-            isGuarding: defender.isGuarding || false
-        };
+            // --- TYPE AFFINITIES ---
+            const resist = defender.resistances || {};
+            const type = move.type;
+            let efficacy = 1;
+            let affinityMsg = null;
+            let isNull = resist.null?.includes(type);
+            let isDrain = resist.drain?.includes(type);
+            let isRepel = resist.repel?.includes(type);
+            let isWeak = resist.weak?.includes(type);
+            let isResist = resist.resist?.includes(type);
 
-        let damage = await damageCalculator.calculateDamage(attacker, defender, move, context);
+            // Null: no effect
+            if (isNull) {
+                await this.message.channel.send(`${this._getEntityText(attacker)} uses ${move.emoji || ''} ${move.name} (hit ${hit+1})... but it has no effect! ❌`);
+                continue;
+            }
+            // Drain: heals the target
+            if (isDrain) {
+                const context = {
+                    attackStageMultiplier: attackerMods.strengthMultiplier || 1,
+                    defenseStageMultiplier: defenderMods.defenseMultiplier || 1,
+                    isGuarding: defender.isGuarding || false
+                };
+                let damage = await damageCalculator.calculateDamage(attacker, defender, move, context);
+                defender.hp = Math.min(defender.hp + Math.max(1, Math.floor(damage)), defender.maxHp);
+                await this.message.channel.send(`${this._getEntityText(attacker)} uses ${move.emoji || ''} ${move.name} (hit ${hit+1})... but it's drained! ${this._getEntityText(defender)} recovers ${Math.max(1, Math.floor(damage))} HP! 💉`);
+                continue;
+            }
+            // Repel: reflects the damage
+            if (isRepel) {
+                const context = {
+                    attackStageMultiplier: attackerMods.strengthMultiplier || 1,
+                    defenseStageMultiplier: defenderMods.defenseMultiplier || 1,
+                    isGuarding: false // Repel ignores defense
+                };
+                let damage = await damageCalculator.calculateDamage(attacker, defender, move, context);
+                attacker.hp -= damage;
+                await this.message.channel.send(`${this._getEntityText(attacker)} uses ${move.emoji || ''} ${move.name} (hit ${hit+1})... but it's reflected! ${this._getEntityText(attacker)} takes ${damage} damage! 🔁`);
+                continue;
+            }
+            // Weak: increased damage
+            if (isWeak) {
+                efficacy = 1.25;
+                affinityMsg = 'WEAK! ‼️';
+            } else if (isResist) {
+                efficacy = 0.5;
+                affinityMsg = 'RESIST! 🛡';
+            }
 
-        if (Math.random() < 0.1) {
-            damage = Math.floor(damage * 1.5);
-            await this.message.channel.send(`Critical hit! 💥`);
-        }
+            const context = {
+                attackStageMultiplier: attackerMods.strengthMultiplier || 1,
+                defenseStageMultiplier: defenderMods.defenseMultiplier || 1,
+                isGuarding: defender.isGuarding || false
+            };
 
-        defender.hp -= damage;
-        return damage;
-    }
+            let damage = await damageCalculator.calculateDamage(attacker, defender, move, context);
+            damage = Math.floor(damage * efficacy);
 
-    _getEntityText(entity) {
-        return entity.userId ? `<@${entity.userId}> (${entity.name})` : entity.name;
-    }
+            if (Math.random() < 0.1) {
+                damage = Math.floor(damage * 1.5);
+                await this.message.channel.send(`Critical hit! 💥 (hit ${hit+1})`);
+            }
 
-    async _handleTargetRedirection(attacker, defender, move) {
-        if (!await damageCalculator.shouldTargetAlly(attacker) || move.type === 'Healing') {
-            return false;
-        }
-
-        const attackerText = this._getEntityText(attacker);
-        const defenderText = this._getEntityText(defender);
-
-        if (await statusHandler.hasStatusEffect(attacker, 'charm')) {
-            await this.message.channel.send(`${attackerText} is charmed 💘 and attacks an ally instead!`);
-            return true;
-        } else if (attacker.statusEffects?.some(effect => effect.name.toLowerCase() === 'brainwash')) {
-            await this.message.channel.send(`${attackerText} is brainwashed 🧠 and heals the enemy instead!`);
-            const healAmount = Math.max(1, Math.floor(move.power ? move.power / 2 : defender.maxHp * 0.15));
-            defender.hp = Math.min(defender.hp + healAmount, defender.maxHp);
-            await this.message.channel.send(`${defenderText} recovers ${healAmount} HP!`);
-            return true;
-        }
-        return false;
-    }
-
-    async _checkStatusBreak(defender, damageType, defenderText) {
-        const brokenEffects = damageCalculator.checkStatusBreakOnDamage(defender, damageType);
-        if (brokenEffects?.length > 0) {
-            for (const effect of brokenEffects) {
-                await this.message.channel.send(`${defenderText}'s ${effect} status was broken by the attack!`);
+            defender.hp -= damage;
+            totalDamage += damage;
+            anyHit = true;
+            if (affinityMsg) {
+                await this.message.channel.send(`${this._getEntityText(attacker)} uses ${move.emoji || ''} ${move.name} (hit ${hit+1})... ${affinityMsg}`);
             }
         }
+        if (!anyHit) return false;
+        return totalDamage;
     }
 
     async _executeHealingMove(attacker, move, attackerText) {
@@ -436,7 +463,12 @@ class BattleManager {
         const damage = await this._executeAttack(attacker, defender, move);
         if (damage === false) return true;
 
-        await this.message.channel.send(`${attackerText} uses ${move.emoji} ${move.name}...`);
+        // Default message if not weak/resist/null/drain/repel
+        const resist = defender.resistances || {};
+        const type = move.type;
+        if (!resist.weak?.includes(type) && !resist.resist?.includes(type) && !resist.null?.includes(type) && !resist.drain?.includes(type) && !resist.repel?.includes(type)) {
+            await this.message.channel.send(`${attackerText} uses ${move.emoji} ${move.name}...`);
+        }
         await this.message.channel.send(`${defenderText} takes ${damage} damage!`);
 
         await this._checkStatusBreak(defender, move.type, defenderText);
@@ -450,6 +482,40 @@ class BattleManager {
         }
 
         return true;
+    }
+
+    _getEntityText(entity) {
+        return entity.userId ? `<@${entity.userId}> (${entity.name})` : entity.name;
+    }
+
+    async _handleTargetRedirection(attacker, defender, move) {
+        if (!await damageCalculator.shouldTargetAlly(attacker) || move.type === 'Healing') {
+            return false;
+        }
+
+        const attackerText = this._getEntityText(attacker);
+        const defenderText = this._getEntityText(defender);
+
+        if (await statusHandler.hasStatusEffect(attacker, 'charm')) {
+            await this.message.channel.send(`${attackerText} is charmed 💘 and attacks an ally instead!`);
+            return true;
+        } else if (attacker.statusEffects?.some(effect => effect.name.toLowerCase() === 'brainwash')) {
+            await this.message.channel.send(`${attackerText} is brainwashed 🧠 and heals the enemy instead!`);
+            const healAmount = Math.max(1, Math.floor(move.power ? move.power / 2 : defender.maxHp * 0.15));
+            defender.hp = Math.min(defender.hp + healAmount, defender.maxHp);
+            await this.message.channel.send(`${defenderText} recovers ${healAmount} HP!`);
+            return true;
+        }
+        return false;
+    }
+
+    async _checkStatusBreak(defender, damageType, defenderText) {
+        const brokenEffects = damageCalculator.checkStatusBreakOnDamage(defender, damageType);
+        if (brokenEffects?.length > 0) {
+            for (const effect of brokenEffects) {
+                await this.message.channel.send(`${defenderText}'s ${effect} status was broken by the attack!`);
+            }
+        }
     }
 
     resetMenuState(userId) {

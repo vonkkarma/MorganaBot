@@ -50,7 +50,13 @@ module.exports = {
     });
 
     try {
-
+    const filter = i => {
+        if (i.user.id !== message.author.id) {
+            i.reply({ content: '!', ephemeral: true });
+            return false;
+        }
+        return true;
+        };
       const collector = reply.createMessageComponentCollector({
         filter,
         time: 60000

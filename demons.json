@@ -218,5 +218,29 @@
     "ailmentResist": [],
     "ailmentNull": []  
     }
+  },
+  "Izanagi I": {
+    "name": "Izanagi I",
+    "level": 20,
+    "hp": 120,
+    "sp": 90,
+    "strength": 14,
+    "magic": 13,
+    "vitality": 13,
+    "speed": 14,
+    "abilities": ["Tarukaja", "Zionga", "Cross Slash", "Rising Slash"],
+    "resistances": {
+    "weak": ["Wind"],
+    "resist": ["Elec"],
+    "null": ["Dark"],
+    "drain": [],
+    "repel": [],
+    "ailmentResist": [],
+    "ailmentNull": []  
+    }
   }
 }
+
+
+
+

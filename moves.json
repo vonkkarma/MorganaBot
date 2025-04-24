@@ -262,6 +262,40 @@
     "desc": "Decreases all stats of one foe.",
     "debuff": "debilitate",
     "target": "enemy"
+  },
+  "Cross Slash": {
+  "name": "Cross Slash",
+  "type": "Physical",
+  "power": 140,
+  "emoji": "✂️",
+  "sp": 50,
+  "usesStrength": true,
+  "usesMagic": false,
+  "accuracy": 98,
+  "desc": "Heavy Physical damage to 1 foe, 2 times.",
+  "hits": 2
+  },
+  "Zionga": {
+    "name": "Zionga",
+    "type": "Elec",
+    "power": 160,
+    "emoji": "⚡",
+    "sp": 20,
+    "usesStrength": false,
+    "usesMagic": true,
+    "accuracy": 98,
+    "desc": "Medium Elec attack to 1 foe."
+  },
+  "Rising Slash": {
+    "name": "Rising Slash",
+    "type": "Physical",
+    "power": 120,
+    "emoji": "💥",
+    "sp": 30,
+    "usesStrength": true,
+    "usesMagic": false,
+    "accuracy": 98,
+    "desc": "Heavy Physical attack to 1 foe."
   }
 }
   
