@@ -44,10 +44,13 @@ class BattleManager {
                     components: Array.isArray(row) ? row : [row]
                 });
             } else {
+                console.log(existingMessage);
                 await this.message.channel.send({
                     content: battleStatus,
                     components: Array.isArray(row) ? row : [row]
+                
                 });
+                existingMessage = true;
             }
         } else {
             if (existingMessage) {
@@ -214,7 +217,6 @@ class BattleManager {
                 return await this.executeBasicAttack(attacker, defender);
             case 2:
                 this.menuState.get(attacker.userId).currentMenu = 'skills';
-                await this.displayBattleStatus();
                 return false;
             case 3:
                 return await this.executeGuard(attacker);
