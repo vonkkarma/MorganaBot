@@ -24,39 +24,49 @@ class BattleManager {
         const attacker = isPlayerTurn ? this.battleData.player : this.battleData.enemy;
         const player = this.battleData.player;
         const enemy = this.battleData.enemy;
-
+    
         const playerMention = player.userId ? ` (<@${player.userId}>)` : '';
         const enemyMention = enemy.userId ? ` (<@${enemy.userId}>)` : '';
         const attackerMention = attacker.userId ? `<@${attacker.userId}>` : attacker.name;
-
+    
         let battleStatus = this._formatEntityStatus(player, playerMention);
         battleStatus += `\n\n${this._formatEntityStatus(enemy, enemyMention)}`;
-
+    
         if (isPlayerTurn !== null) {
             battleStatus += `\n\n${attackerMention}, it's your turn!`;
             
             const menuState = this.menuState.get(attacker.userId) || { currentMenu: 'main', page: 0 };
             const row = this._createMenuButtons(attacker, menuState);
             
-            if (existingMessage) {
-                await existingMessage.edit({
-                    content: battleStatus,
-                    components: Array.isArray(row) ? row : [row]
-                });
-            } else {
-                console.log(existingMessage);
-                await this.message.channel.send({
-                    content: battleStatus,
-                    components: Array.isArray(row) ? row : [row]
-                    
-                });
+            // Improved check to ensure existingMessage is valid
+            if (existingMessage && typeof existingMessage.edit === 'function') {
+                try {
+                    return await existingMessage.edit({
+                        content: battleStatus,
+                        components: Array.isArray(row) ? row : [row]
+                    });
+                } catch (error) {
+                    console.error("Failed to edit message:", error);
+                    // Fall through to sending a new message
+                }
             }
+            
+            // Only send a new message if we couldn't edit the existing one
+            return await this.message.channel.send({
+                content: battleStatus,
+                components: Array.isArray(row) ? row : [row]
+            });
         } else {
-            if (existingMessage) {
-                await existingMessage.edit(battleStatus);
-            } else {
-                await this.message.channel.send(battleStatus);
+            // Similar approach for the non-player turn case
+            if (existingMessage && typeof existingMessage.edit === 'function') {
+                try {
+                    return await existingMessage.edit({ content: battleStatus });
+                } catch (error) {
+                    console.error("Failed to edit message:", error);
+                }
             }
+            
+            return await this.message.channel.send({ content: battleStatus });
         }
     }
 
