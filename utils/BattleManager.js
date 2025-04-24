@@ -48,9 +48,8 @@ class BattleManager {
                 await this.message.channel.send({
                     content: battleStatus,
                     components: Array.isArray(row) ? row : [row]
-                
+                    
                 });
-                existingMessage = true;
             }
         } else {
             if (existingMessage) {

@@ -213,7 +213,7 @@
     "weak": ["Ice"],
     "resist": [],
     "null": [],
-    "drain": ["Ice","Confuse"],
+    "drain": ["Ice"],
     "repel": [],
     "ailmentResist": [],
     "ailmentNull": []  
