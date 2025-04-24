@@ -70,6 +70,75 @@
       "accuracy": 98,
       "desc": "Medium Wind attack to 1 foe."
     },
+    "Zanma": {
+      "name": "Zanma",
+      "type": "Wind",
+      "power": 160,
+      "emoji": "🍃",
+      "sp": 20,
+      "usesStrength": false,
+      "usesMagic": true,
+      "accuracy": 98,
+      "desc": "Medium Wind attack to 1 foe."
+    },
+    "Bufudyne": {
+      "name": "Bufudyne",
+      "type": "Ice",
+      "power": 200,
+      "emoji": "❄️",
+      "sp": 40,
+      "usesStrength": false,
+      "usesMagic": true,
+      "accuracy": 98,
+      "desc": "Heavy Ice attack to 1 foe."
+    },
+    "Megidolaon": {
+      "name": "Megidolaon",
+      "type": "Almighty",
+      "power": 230,
+      "emoji": "☄️",
+      "sp": 120,
+      "usesStrength": false,
+      "usesMagic": true,
+      "accuracy": 100,
+      "desc": "Severe Almighty damage to all foes."
+    },
+    "Die for Me!": {
+      "name": "Die for Me!",
+      "type": "Dark",
+      "power": 130,
+      "emoji": "💀",
+      "sp": 50,
+      "usesStrength": false,
+      "usesMagic": true,
+      "accuracy": 80,
+      "hits": 5,
+      "desc": "5 medium dark attacks to foe."
+    },
+    "Mudoon": {
+      "name": "Mudoon",
+      "type": "Dark",
+      "power": 175,
+      "emoji": "🌑",
+      "sp": 40,
+      "usesStrength": false,
+      "usesMagic": true,
+      "accuracy": 98,
+      "desc": "Medium Dark attack to 1 foe."
+    },
+    "Concentrate": {
+      "name": "Concentrate",
+      "type": "Support",
+      "power": 0,
+      "emoji": "🌀",
+      "sp": 15,
+      "usesStrength": false,
+      "usesMagic": true,
+      "accuracy": 100,
+      "desc": "Boosts the power of the next magical attack.",
+      "buff": "concentrate",
+      "target": "self"
+    },
     "Poisma": {
     "name": "Poisma",
     "type": "Ailment",
@@ -119,6 +188,17 @@
     "usesMagic": true,
     "accuracy": 98,
     "desc": "Medium Fire attack to 1 foe."
+  },
+  "Agidyne": {
+    "name": "Agidyne",
+    "type": "Fire",
+    "power": 210,
+    "emoji": "🔥",
+    "sp": 32,
+    "usesStrength": false,
+    "usesMagic": true,
+    "accuracy": 98,
+    "desc": "Heavy Fire attack to 1 foe."
   },
   "Brainwash": {
     "name": "Brainwash",
@@ -286,6 +366,17 @@
     "accuracy": 98,
     "desc": "Medium Elec attack to 1 foe."
   },
+  "Ziodyne": {
+    "name": "Ziodyne",
+    "type": "Elec",
+    "power": 210,
+    "emoji": "⚡",
+    "sp": 32,
+    "usesStrength": false,
+    "usesMagic": true,
+    "accuracy": 98,
+    "desc": "Heavy Elec attack to 1 foe."
+  },
   "Rising Slash": {
     "name": "Rising Slash",
     "type": "Physical",
@@ -296,6 +387,18 @@
     "usesMagic": false,
     "accuracy": 98,
     "desc": "Heavy Physical attack to 1 foe."
+  },
+  "Charge": {
+    "name": "Charge",
+    "type": "Support",
+    "power": 0,
+    "emoji": "💢",
+    "sp": 15,
+    "usesStrength": false,
+    "usesMagic": true,
+    "accuracy": 100,
+    "desc": "Boosts the power of the next physical attack.",
+    "buff": "charge",
+    "target": "self"
   }
 }
-  

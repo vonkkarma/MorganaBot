@@ -238,6 +238,106 @@
     "ailmentResist": [],
     "ailmentNull": []  
     }
+  },
+  "Amanozako": {
+    "name": "Amanozako",
+    "level": 20,
+    "hp": 110,
+    "sp": 120,
+    "strength": 12,
+    "magic": 18,
+    "vitality": 10,
+    "speed": 15,
+    "abilities": ["Zanma", "Tarukaja"],
+    "resistances": {
+      "weak": ["Elec"],
+      "resist": ["Wind"],
+      "null": [],
+      "drain": [],
+      "repel": [],
+      "ailmentResist": [],
+      "ailmentNull": []
+    }
+  },
+  "Mara": {
+    "name": "Mara",
+    "level": 72,
+    "hp": 450,
+    "sp": 300,
+    "strength": 50,
+    "magic": 40,
+    "vitality": 45,
+    "speed": 30,
+    "abilities": ["Megidolaon", "Agidyne", "Charge"],
+    "resistances": {
+      "weak": ["Ice"],
+      "resist": ["Fire"],
+      "null": ["Dark"],
+      "drain": [],
+      "repel": [],
+      "ailmentResist": [],
+      "ailmentNull": []
+    }
+  },
+  "Black Frost": {
+    "name": "Black Frost",
+    "level": 35,
+    "hp": 200,
+    "sp": 150,
+    "strength": 25,
+    "magic": 30,
+    "vitality": 20,
+    "speed": 18,
+    "abilities": ["Bufudyne", "Agiodyne"],
+    "resistances": {
+      "weak": ["Fire"],
+      "resist": ["Ice"],
+      "null": ["Dark"],
+      "drain": [],
+      "repel": [],
+      "ailmentResist": [],
+      "ailmentNull": []
+    }
+  },
+  "Thor": {
+    "name": "Thor",
+    "level": 50,
+    "hp": 300,
+    "sp": 200,
+    "strength": 40,
+    "magic": 25,
+    "vitality": 35,
+    "speed": 20,
+    "abilities": ["Ziodyne", "Charge"],
+    "resistances": {
+      "weak": ["Wind"],
+      "resist": ["Elec"],
+      "null": [],
+      "drain": [],
+      "repel": [],
+      "ailmentResist": [],
+      "ailmentNull": []
+    }
+  },
+  "Alice": {
+    "name": "Alice",
+    "level": 60,
+    "hp": 250,
+    "sp": 300,
+    "strength": 20,
+    "magic": 50,
+    "vitality": 25,
+    "speed": 30,
+    "abilities": ["Die for Me!", "Mudoon", "Concentrate"],
+    "resistances": {
+      "weak": ["Light"],
+      "resist": [],
+      "null": ["Dark"],
+      "drain": [],
+      "repel": [],
+      "ailmentResist": [],
+      "ailmentNull": []
+    }
   }
 }
 

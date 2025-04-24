@@ -177,6 +177,28 @@
     },
     "stackable": false
   },
+  "concentrate": {
+    "name": "Concentrate",
+    "emoji": "🌀",
+    "type": "buff",
+    "turnDuration": 2,
+    "description": "Boosts the power of the next magical attack.",
+    "battleEffect": {
+      "concentrateMultiplier": 2.5
+    },
+    "stackable": false
+  },
+  "charge": {
+    "name": "Charge",
+    "emoji": "💢",
+    "type": "buff",
+    "turnDuration": 2,
+    "description": "Boosts the power of the next physical attack.",
+    "battleEffect": {
+      "concentrateMultiplier": 2.5
+    },
+    "stackable": false
+  },
   "tarunda": {
     "name": "Tarunda",
     "emoji": "💔",

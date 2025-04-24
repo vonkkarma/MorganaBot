@@ -127,6 +127,36 @@ async function calculateDamage(attacker, defender, skill, context = {}) {
   context.levelCorrectionMultiplier = getLevelCorrectionMultiplier(attacker, defender);
   modified *= skill.power / 100;
 
+  // --- Concentrate logic ---
+  if (skill.usesMagic && attacker.statusEffects) {
+    const concentrateIdx = attacker.statusEffects.findIndex(
+      s => s.name && s.name.toLowerCase() === 'concentrate' && s.turnsRemaining > 0
+    );
+    if (concentrateIdx !== -1) {
+      // Get multiplier from status effect (default 2.5)
+      const concentrate = attacker.statusEffects[concentrateIdx];
+      const multiplier = (concentrate.battleEffect && concentrate.battleEffect.concentrateMultiplier) || 2.5;
+      modified *= multiplier;
+      // Remove concentrate after use
+      attacker.statusEffects.splice(concentrateIdx, 1);
+    }
+  }
+
+  // --- Charge logic ---
+  if (skill.usesStrength && attacker.statusEffects) {
+    const chargeIdx = attacker.statusEffects.findIndex(
+      s => s.name && s.name.toLowerCase() === 'charge' && s.turnsRemaining > 0
+    );
+    if (chargeIdx !== -1) {
+      // Get multiplier from status effect (default 2.5)
+      const charge = attacker.statusEffects[chargeIdx];
+      const multiplier = (charge.battleEffect && charge.battleEffect.concentrateMultiplier) || 2.5;
+      modified *= multiplier;
+      // Remove charge after use
+      attacker.statusEffects.splice(chargeIdx, 1);
+    }
+  }
+
   // Apply status effect multipliers if not already provided in context
   const attackStageMultiplier = context.attackStageMultiplier ||
     (skill.usesStrength ? attackerModifiers.strengthMultiplier :
