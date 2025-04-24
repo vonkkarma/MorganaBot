@@ -1,6 +1,7 @@
 const fs = require('fs');
 const { Client, GatewayIntentBits } = require('discord.js');
-const { token } = require('./config.json');
+require('dotenv').config();
+const token = process.env.DISCORD_TOKEN;
 const path = require('path');
 const dataManager = require('./utils/DataManager');
 
