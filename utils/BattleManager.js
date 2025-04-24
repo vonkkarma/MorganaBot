@@ -1,6 +1,7 @@
 const dataManager = require('./DataManager');
 const statusHandler = require('./statusHandler');
 const damageCalculator = require('./damageCalculator');
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
 class BattleManager {
     constructor(message, battleData, demons) {
@@ -10,6 +11,7 @@ class BattleManager {
         this.menuState = new Map();
         this.moves = null;
         this.statusEffects = null;
+        this.itemsPerPage = 5; // Number of demons/moves per page
     }
 
     async initialize() {
@@ -17,7 +19,7 @@ class BattleManager {
         this.statusEffects = await dataManager.getStatusEffects();
     }
 
-    async displayBattleStatus(isPlayerTurn = true) {
+    async displayBattleStatus(isPlayerTurn = true, existingMessage = null) {
         if (!this.moves) await this.initialize();
         const attacker = isPlayerTurn ? this.battleData.player : this.battleData.enemy;
         const player = this.battleData.player;
@@ -32,10 +34,28 @@ class BattleManager {
 
         if (isPlayerTurn !== null) {
             battleStatus += `\n\n${attackerMention}, it's your turn!`;
-            battleStatus += this._getMenuText(attacker);
+            
+            const menuState = this.menuState.get(attacker.userId) || { currentMenu: 'main', page: 0 };
+            const row = this._createMenuButtons(attacker, menuState);
+            
+            if (existingMessage) {
+                await existingMessage.edit({
+                    content: battleStatus,
+                    components: Array.isArray(row) ? row : [row]
+                });
+            } else {
+                await this.message.channel.send({
+                    content: battleStatus,
+                    components: Array.isArray(row) ? row : [row]
+                });
+            }
+        } else {
+            if (existingMessage) {
+                await existingMessage.edit(battleStatus);
+            } else {
+                await this.message.channel.send(battleStatus);
+            }
         }
-
-        await this.message.channel.send(battleStatus);
     }
 
     _formatEntityStatus(entity, mention) {
@@ -54,36 +74,135 @@ class BattleManager {
         return status;
     }
 
-    _getMenuText(entity) {
-        const menuState = this.menuState.get(entity.userId) || { currentMenu: 'main' };
+    _createMenuButtons(entity, menuState) {
+        const row = new ActionRowBuilder();
 
         if (menuState.currentMenu === 'main') {
-            return `\nChoose an action:\n1 - 🗡️ Attack\n2 - 📜 Skills\n3 - 🛡️ Guard\n\nType the number of your choice.`;
+            row.addComponents(
+                new ButtonBuilder()
+                    .setCustomId('attack')
+                    .setLabel('Attack')
+                    .setEmoji('🗡️')
+                    .setStyle(ButtonStyle.Primary),
+                new ButtonBuilder()
+                    .setCustomId('skills')
+                    .setLabel('Skills')
+                    .setEmoji('📜')
+                    .setStyle(ButtonStyle.Primary),
+                new ButtonBuilder()
+                    .setCustomId('guard')
+                    .setLabel('Guard')
+                    .setEmoji('🛡️')
+                    .setStyle(ButtonStyle.Primary)
+            );
         } else if (menuState.currentMenu === 'skills') {
-            return `\nChoose a skill:\n${entity.abilities.map((name, i) => {
+            const startIdx = menuState.page * this.itemsPerPage;
+            const endIdx = Math.min(startIdx + this.itemsPerPage, entity.abilities.length);
+            const abilities = entity.abilities.slice(startIdx, endIdx);
+
+            // Add skill buttons
+            abilities.forEach((name, i) => {
                 const move = this.moves[name];
-                return move
-                    ? `${i + 1}. ${move.emoji} ${name} — ${move.type} (${move.sp} SP) \n _${move.desc}_\n`
-                    : `${i + 1}. ${name} (Unknown Move)`;
-            }).join('\n')}\n0 - ⬅️ Back to main menu`;
+                if (move) {
+                    row.addComponents(
+                        new ButtonBuilder()
+                            .setCustomId(`skill_${startIdx + i}`)
+                            .setLabel(name)
+                            .setEmoji(move.emoji)
+                            .setStyle(ButtonStyle.Primary)
+                            .setDisabled(entity.sp < move.sp)
+                    );
+                }
+            });
+
+            // Add navigation buttons if needed
+            if (entity.abilities.length > this.itemsPerPage) {
+                const navigationRow = new ActionRowBuilder();
+                navigationRow.addComponents(
+                    new ButtonBuilder()
+                        .setCustomId('prev_page')
+                        .setLabel('⬅')
+                        .setStyle(ButtonStyle.Secondary)
+                        .setDisabled(menuState.page === 0),
+                    new ButtonBuilder()
+                        .setCustomId('next_page')
+                        .setLabel('➡')
+                        .setStyle(ButtonStyle.Secondary)
+                        .setDisabled((menuState.page + 1) * this.itemsPerPage >= entity.abilities.length)
+                );
+                return [row, navigationRow];
+            }
+
+            // Add back button
+            row.addComponents(
+                new ButtonBuilder()
+                    .setCustomId('back')
+                    .setLabel('Back')
+                    .setEmoji('⬅️')
+                    .setStyle(ButtonStyle.Secondary)
+            );
         }
+
+        return row;
     }
 
-    async processInput(input, isPlayerTurn) {
+    async processInput(interaction, isPlayerTurn) {
         const attacker = isPlayerTurn ? this.battleData.player : this.battleData.enemy;
         const defender = isPlayerTurn ? this.battleData.enemy : this.battleData.player;
         
         if (!this.menuState.has(attacker.userId)) {
-            this.menuState.set(attacker.userId, { currentMenu: 'main' });
+            this.menuState.set(attacker.userId, { currentMenu: 'main', page: 0 });
         }
 
         const menuState = this.menuState.get(attacker.userId);
-        const choice = parseInt(input);
+        const customId = interaction.customId;
+
+        // Acknowledge the interaction first
+        await interaction.deferUpdate();
 
         if (menuState.currentMenu === 'main') {
-            return await this._handleMainMenu(choice, attacker, defender);
+            switch (customId) {
+                case 'attack':
+                    return await this.executeBasicAttack(attacker, defender);
+                case 'skills':
+                    menuState.currentMenu = 'skills';
+                    menuState.page = 0;
+                    await this.displayBattleStatus(isPlayerTurn, interaction.message);
+                    return false;
+                case 'guard':
+                    return await this.executeGuard(attacker);
+                default:
+                    return false;
+            }
         } else if (menuState.currentMenu === 'skills') {
-            return await this._handleSkillsMenu(choice, attacker, defender);
+            if (customId === 'back') {
+                menuState.currentMenu = 'main';
+                await this.displayBattleStatus(isPlayerTurn, interaction.message);
+                return false;
+            } else if (customId === 'prev_page') {
+                menuState.page = Math.max(0, menuState.page - 1);
+                await this.displayBattleStatus(isPlayerTurn, interaction.message);
+                return false;
+            } else if (customId === 'next_page') {
+                const maxPage = Math.ceil(attacker.abilities.length / this.itemsPerPage) - 1;
+                menuState.page = Math.min(maxPage, menuState.page + 1);
+                await this.displayBattleStatus(isPlayerTurn, interaction.message);
+                return false;
+            } else if (customId.startsWith('skill_')) {
+                const index = parseInt(customId.split('_')[1]);
+                if (index >= 0 && index < attacker.abilities.length) {
+                    const abilityName = attacker.abilities[index];
+                    const result = await this.executeAbility(attacker, defender, { name: abilityName });
+                    menuState.currentMenu = 'main';
+                    menuState.page = 0;
+
+                    if (result) {
+                        await statusHandler.processStatusEffectsEnd(attacker, this.message);
+                    }
+
+                    return result;
+                }
+            }
         }
 
         return false;

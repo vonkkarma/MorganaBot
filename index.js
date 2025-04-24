@@ -4,9 +4,14 @@ const { token } = require('./config.json');
 const path = require('path');
 const dataManager = require('./utils/DataManager');
 
-// Create a new client instance
+// Create a new client instance with required intents
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMessageReactions
+  ],
 });
 
 client.commands = new Map();
